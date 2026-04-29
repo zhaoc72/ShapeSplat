@@ -6,9 +6,9 @@ ShapeSplat++ Minimal 是一个最小可运行的单图多前景物体 3D Gaussia
 
 SAM3-DINOv3 frozen front-end + visible-hidden Gaussian buffers + scene-coupled ownership rendering + confidence-weighted hidden support prior + differentiable edit-consistency optimization。
 
-当前版本全部使用 stub：
+当前版本默认使用 stub：
 
-- `Sam3Stub`：用颜色阈值和 connected components 产生 retained visible masks。
+- `Sam3Stub`：用前景启发式和 connected components 产生 retained visible masks。
 - `DinoV3Stub`：用 RGB、坐标和正弦位置编码构造 dense features，并做 mask pooling。
 - `DepthStub`：生成 canonical weak monocular depth。
 - `ToyShapeBank`：提供 sphere/box/cylinder toy point clouds。
@@ -27,12 +27,13 @@ pip install -e .
 python scripts/run_minimal.py --config configs/minimal.yaml --out outputs/minimal
 ```
 
-如果没有提供 `--input`，脚本会自动生成一张 synthetic 多物体 RGB 图像。
+如果没有提供 `--input`，脚本会自动生成 synthetic 多物体 RGB 图像。
 
 ## 输出文件
 
 - `input.png`：输入图像。
-- `masks.png`：SAM3 stub 的 visible instance masks。
+- `masks.png`：SAM backend 的 visible instance masks。
+- `input_mask_overlay.png`：输入图和 masks 的半透明叠加。
 - `render_final.png`：最终 soft renderer RGB。
 - `alpha_final.png`：最终 alpha。
 - `ownership_argmax.png`：每个像素归属哪个 object 的可视化。
@@ -42,50 +43,16 @@ python scripts/run_minimal.py --config configs/minimal.yaml --out outputs/minima
 
 ## Sanity Checks / 最小版本检查
 
-先运行最小 demo：
-
 ```bash
 python scripts/run_minimal.py --config configs/minimal.yaml --out outputs/minimal
-```
-
-检查 loss 日志是否存在、非空、没有 NaN/Inf：
-
-```bash
 python scripts/check_loss.py --log outputs/minimal/loss_log.json
-```
-
-检查 checkpoint 是否可以重新加载：
-
-```bash
 python scripts/check_checkpoint.py --checkpoint outputs/minimal/checkpoint_minimal.pt
-```
-
-检查 renderer 输出 shape 是否符合 pipeline 约定：
-
-```bash
 python scripts/check_renderer_shape.py --config configs/minimal.yaml
-```
-
-检查 loss 是否可以反向传播到 Gaussian scene 参数：
-
-```bash
 python scripts/check_backward.py --config configs/minimal.yaml --stage visible
-```
-
-一键执行所有检查：
-
-```bash
 python scripts/run_all_checks.py --config configs/minimal.yaml --out outputs/minimal
 ```
 
-这些检查通过意味着：
-
-- front-end 输出正常；
-- Gaussian scene 初始化正常；
-- renderer 输出 shape 正常；
-- loss 没有 NaN / Inf；
-- checkpoint 可以加载；
-- 反向传播链路是通的。
+这些检查通过意味着 front-end 输出正常、Gaussian scene 初始化正常、renderer 输出 shape 正常、loss 没有 NaN/Inf、checkpoint 可以加载、反向传播链路是通的。
 
 ## Real Image Input / 真实图像输入测试
 
@@ -101,23 +68,62 @@ python scripts/create_example_image.py --out examples/test_image.png --size 128
 python scripts/run_minimal.py --config configs/minimal.yaml --input examples/test_image.png --out outputs/real_input
 ```
 
-或者使用更明确的真实输入 demo：
+或者使用 demo：
 
 ```bash
 python scripts/run_real_input_demo.py --config configs/minimal.yaml --input examples/test_image.png --out outputs/real_input
 ```
 
-检查真实输入输出：
+检查输出：
 
 ```bash
 python scripts/run_all_checks.py --config configs/minimal.yaml --out outputs/real_input
 ```
 
-当前仍然使用 `Sam3Stub`、`DinoV3Stub`、`DepthStub` 和 `SoftGaussianRenderer`。这一步只验证真实图像输入、resize、front-end stub、Gaussian 初始化、renderer、loss 和保存逻辑是否稳定。
+当前仍然默认使用 `Sam3Stub`、`DinoV3Stub`、`DepthStub` 和 `SoftGaussianRenderer`。这一步只验证真实图像输入、resize、front-end stub、Gaussian 初始化、renderer、loss 和保存逻辑是否稳定。
+
+## Optional Real SAM3 Backend / 可选真实 SAM3 前端
+
+默认仍然使用 stub：
+
+```yaml
+frontend:
+  sam_backend: stub
+```
+
+自动模式会优先尝试真实 SAM3，如果依赖或 checkpoint 不可用，会 fallback 到 `Sam3Stub`：
+
+```yaml
+frontend:
+  sam_backend: auto
+  sam3_checkpoint: path/to/checkpoint
+```
+
+真实模式会强制使用 `RealSAM3Wrapper`，如果 checkpoint 或依赖缺失会报错：
+
+```yaml
+frontend:
+  sam_backend: real
+  sam3_checkpoint: path/to/checkpoint
+```
+
+检查 SAM backend：
+
+```bash
+python scripts/check_sam_backend.py --config configs/minimal.yaml --backend stub --out outputs/check_sam_stub
+```
+
+如果有真实 SAM3：
+
+```bash
+python scripts/check_sam_backend.py --config configs/minimal.yaml --backend real --input examples/test_image.png --out outputs/check_sam_real
+```
+
+`RealSAM3Wrapper` 是可选接口；真实 SAM3 API 可能需要根据本地安装方式调整。项目其余模块只依赖统一的 `MaskSet` 输出，不关心具体 SAM 实现。
 
 ## Evaluation Metrics / 最小评估指标
 
-当前 minimal 版本支持以下轻量指标：
+当前 minimal 版本支持：
 
 - Inst-IoU
 - AttrAcc
@@ -128,23 +134,16 @@ python scripts/run_all_checks.py --config configs/minimal.yaml --out outputs/rea
 - EditLocality
 - CollateralL1
 
-这些指标主要用于检查 object ownership、foreground leakage 和 editing stability。当前没有实现 Chamfer / F-score / LPIPS：Chamfer / F-score 需要 GT mesh 和对齐协议，后续实验版本再加入；`CollateralL1` 是 Collateral LPIPS 的 lightweight proxy。
-
-使用独立评估脚本：
+这些指标主要用于检查 object ownership、foreground leakage 和 editing stability。当前没有实现 Chamfer / F-score / LPIPS；Chamfer / F-score 需要 GT mesh 和对齐协议，后续实验版本再加入。`CollateralL1` 是 Collateral LPIPS 的 lightweight proxy。
 
 ```bash
 python scripts/evaluate_minimal.py --config configs/minimal.yaml --input examples/test_image.png --out outputs/eval_real_input
-```
-
-也可以在最小 demo 后直接评估：
-
-```bash
 python scripts/run_minimal.py --config configs/minimal.yaml --input examples/test_image.png --out outputs/real_input --eval
 ```
 
-输出文件：
+输出：
 
-- `metrics.json`：2D ownership / leakage / edit stability 指标。
+- `metrics.json`
 
 ## Ablation Experiments / 消融实验
 
@@ -168,7 +167,7 @@ python scripts/run_minimal.py --config configs/minimal.yaml --input examples/tes
 python scripts/run_ablation.py --config configs/minimal.yaml --ablations configs/ablations.yaml --input examples/test_image.png --out outputs/ablations
 ```
 
-调试时只跑前 3 个：
+调试只跑前 3 个：
 
 ```bash
 python scripts/run_ablation.py --config configs/minimal.yaml --ablations configs/ablations.yaml --input examples/test_image.png --out outputs/ablations_debug --max-experiments 3

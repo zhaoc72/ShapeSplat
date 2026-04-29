@@ -5,6 +5,24 @@ image:
   input_path: null
 
 frontend:
+  # SAM backend: stub / real / auto。
+  # stub 使用 Sam3Stub；real 使用 RealSAM3Wrapper；auto 优先 real，失败则 fallback stub。
+  sam_backend: stub
+  # 真实 SAM3 checkpoint 路径；null 时 real backend 会报错，auto backend 会 fallback。
+  sam3_checkpoint: null
+  # 真实 SAM3 模型类型，具体取值取决于本地 SAM3 安装。
+  sam3_model_type: null
+  # 真实 SAM3 使用设备；auto 时优先 cuda，否则 cpu。
+  sam3_device: auto
+  # automatic 输出通用前景 proposals；text 使用 sam3_text_prompts 做 concept prompts。
+  sam3_prompt_mode: automatic
+  # text prompt 示例，可按真实 SAM3 API 适配为 object/chair/bottle 等。
+  sam3_text_prompts:
+    - object
+  # 真实 SAM3 原始 mask score threshold。
+  sam3_score_threshold: 0.5
+  # 真实 SAM3 原始输出最多保留多少 masks。
+  sam3_max_masks: 8
   max_num_objects: 4
   min_area_ratio: 0.002
   mask_conf_threshold: 0.2

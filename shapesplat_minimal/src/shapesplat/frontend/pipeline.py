@@ -5,7 +5,7 @@ from typing import Dict, Any
 
 import torch
 
-from shapesplat.frontend.sam3_stub import Sam3Stub
+from shapesplat.frontend.sam_backend import build_sam_backend
 from shapesplat.frontend.dinov3_stub import DinoV3Stub
 from shapesplat.frontend.depth_stub import DepthStub
 from shapesplat.geometry.camera import Camera
@@ -26,18 +26,15 @@ class FrontEndOutput:
 def build_frontend(image: torch.Tensor, cfg: Dict[str, Any]) -> FrontEndOutput:
     """构建 frozen front-end 输出。
 
-    SAM3 负责 where：retained visible masks。
+    SAM backend 负责 where：retained visible masks。
     DINOv3 负责 what：mask-guided instance descriptors。
     二者在主方法中 frozen，不由 reconstruction loss 更新。
     当前最小版本不实现复杂的 DINO-assisted merge/split/re-prompt refinement。
     """
     device = torch.device(cfg["device"])
     image = image.to(device)
-    sam = Sam3Stub(
-        max_num_objects=cfg["frontend"]["max_num_objects"],
-        min_area_ratio=cfg["frontend"]["min_area_ratio"],
-        conf_threshold=cfg["frontend"]["mask_conf_threshold"],
-    )
+    # SAM backend 可在 stub / real / auto 间切换，但输出接口固定为 MaskSet。
+    sam = build_sam_backend(cfg)
     masks = sam.predict_masks(image)
     dino = DinoV3Stub()
     feats = dino.extract_dense_features(image)

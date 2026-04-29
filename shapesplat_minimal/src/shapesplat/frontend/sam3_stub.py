@@ -1,25 +1,13 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
 from typing import List, Tuple
 
 import torch
 import torch.nn.functional as F
 
-from shapesplat.geometry.masks import mask_to_box, stable_sort_masks
-
-
-@dataclass
-class MaskSet:
-    """SAM3 stub 的输出结构。
-
-    masks 是 retained visible instance masks，不是 amodal masks；隐藏部分由后续
-    shape prior 弱补全。真实版本应替换为 RealSAM3Wrapper，并保持 predict_masks 接口不变。
-    """
-
-    masks: torch.Tensor
-    confidences: torch.Tensor
-    boxes: torch.Tensor
+from shapesplat.frontend.mask_postprocess import postprocess_masks
+from shapesplat.frontend.types import MaskSet
+from shapesplat.geometry.masks import mask_to_box
 
 
 class Sam3Stub:
@@ -100,12 +88,16 @@ class Sam3Stub:
         if not comps:
             comps = [self._fallback_center_mask(h, w, image.device)]
 
-        # 先按面积保留 top-K，再按位置稳定排序，避免 object ID 因连通域遍历顺序漂移。
+        # 先按面积保留 top-K；随后统一后处理会按位置稳定排序，避免 object ID 漂移。
         comps = sorted(comps, key=lambda m: float(m.sum()), reverse=True)[: self.max_num_objects]
         masks = torch.stack(comps, dim=0).float()
         confidences = torch.full((masks.shape[0],), 0.9, device=image.device)
         boxes = torch.stack([mask_to_box(m) for m in masks], dim=0)
-        keep = confidences >= self.conf_threshold
-        masks, confidences, boxes = masks[keep], confidences[keep], boxes[keep]
-        masks, confidences, boxes = stable_sort_masks(masks, confidences, boxes)
-        return MaskSet(masks, confidences, boxes)
+        cfg = {
+            "frontend": {
+                "max_num_objects": self.max_num_objects,
+                "min_area_ratio": self.min_area_ratio,
+                "mask_conf_threshold": self.conf_threshold,
+            }
+        }
+        return postprocess_masks(MaskSet(masks.float(), confidences.float(), boxes.float()), cfg, (h, w))
