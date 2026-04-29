@@ -1,0 +1,5 @@
+Metadata-Version: 2.4
+Name: shapesplat-minimal
+Version: 0.1.0
+Summary: ShapeSplat++ minimal runnable single-image multi-object Gaussian reconstruction scaffold
+Requires-Python: >=3.9

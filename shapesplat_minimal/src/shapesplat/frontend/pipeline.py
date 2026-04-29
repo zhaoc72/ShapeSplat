@@ -1,0 +1,48 @@
+from __future__ import annotations
+
+from dataclasses import dataclass
+from typing import Dict, Any
+
+import torch
+
+from shapesplat.frontend.sam3_stub import Sam3Stub
+from shapesplat.frontend.dinov3_stub import DinoV3Stub
+from shapesplat.frontend.depth_stub import DepthStub
+from shapesplat.geometry.camera import Camera
+
+
+@dataclass
+class FrontEndOutput:
+    image: torch.Tensor
+    masks: torch.Tensor
+    mask_confidences: torch.Tensor
+    boxes: torch.Tensor
+    dino_features: torch.Tensor
+    descriptors: torch.Tensor
+    depth: torch.Tensor
+    camera: Camera
+
+
+def build_frontend(image: torch.Tensor, cfg: Dict[str, Any]) -> FrontEndOutput:
+    """构建 frozen front-end 输出。
+
+    SAM3 负责 where：retained visible masks。
+    DINOv3 负责 what：mask-guided instance descriptors。
+    二者在主方法中 frozen，不由 reconstruction loss 更新。
+    当前最小版本不实现复杂的 DINO-assisted merge/split/re-prompt refinement。
+    """
+    device = torch.device(cfg["device"])
+    image = image.to(device)
+    sam = Sam3Stub(
+        max_num_objects=cfg["frontend"]["max_num_objects"],
+        min_area_ratio=cfg["frontend"]["min_area_ratio"],
+        conf_threshold=cfg["frontend"]["mask_conf_threshold"],
+    )
+    masks = sam.predict_masks(image)
+    dino = DinoV3Stub()
+    feats = dino.extract_dense_features(image)
+    desc = dino.pool_descriptors(feats, masks.masks)
+    depth = DepthStub(cfg["camera"]["z_near"], cfg["camera"]["z_far"]).predict_depth(image)
+    _, h, w = image.shape
+    camera = Camera.canonical(w, h, cfg["camera"]["focal_scale"], device)
+    return FrontEndOutput(image, masks.masks, masks.confidences, masks.boxes, feats, desc, depth, camera)
