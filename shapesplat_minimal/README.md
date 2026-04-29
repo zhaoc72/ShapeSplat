@@ -40,6 +40,81 @@ python scripts/run_minimal.py --config configs/minimal.yaml --out outputs/minima
 - `loss_log.json`：训练损失日志。
 - `checkpoint_minimal.pt`：最小 checkpoint。
 
+## Sanity Checks / 最小版本检查
+
+先运行最小 demo：
+
+```bash
+python scripts/run_minimal.py --config configs/minimal.yaml --out outputs/minimal
+```
+
+检查 loss 日志是否存在、非空、没有 NaN/Inf：
+
+```bash
+python scripts/check_loss.py --log outputs/minimal/loss_log.json
+```
+
+检查 checkpoint 是否可以重新加载：
+
+```bash
+python scripts/check_checkpoint.py --checkpoint outputs/minimal/checkpoint_minimal.pt
+```
+
+检查 renderer 输出 shape 是否符合 pipeline 约定：
+
+```bash
+python scripts/check_renderer_shape.py --config configs/minimal.yaml
+```
+
+检查 loss 是否可以反向传播到 Gaussian scene 参数：
+
+```bash
+python scripts/check_backward.py --config configs/minimal.yaml --stage visible
+```
+
+一键执行所有检查：
+
+```bash
+python scripts/run_all_checks.py --config configs/minimal.yaml --out outputs/minimal
+```
+
+这些检查通过意味着：
+
+- front-end 输出正常；
+- Gaussian scene 初始化正常；
+- renderer 输出 shape 正常；
+- loss 没有 NaN / Inf；
+- checkpoint 可以加载；
+- 反向传播链路是通的。
+
+## Real Image Input / 真实图像输入测试
+
+生成示例图片：
+
+```bash
+python scripts/create_example_image.py --out examples/test_image.png --size 128
+```
+
+使用真实输入路径运行：
+
+```bash
+python scripts/run_minimal.py --config configs/minimal.yaml --input examples/test_image.png --out outputs/real_input
+```
+
+或者使用更明确的真实输入 demo：
+
+```bash
+python scripts/run_real_input_demo.py --config configs/minimal.yaml --input examples/test_image.png --out outputs/real_input
+```
+
+检查真实输入输出：
+
+```bash
+python scripts/run_all_checks.py --config configs/minimal.yaml --out outputs/real_input
+```
+
+当前仍然使用 `Sam3Stub`、`DinoV3Stub`、`DepthStub` 和 `SoftGaussianRenderer`。这一步只验证真实图像输入、resize、front-end stub、Gaussian 初始化、renderer、loss 和保存逻辑是否稳定。
+
 ## 后续真实模块替换路线
 
 - `Sam3Stub` -> `RealSAM3Wrapper`

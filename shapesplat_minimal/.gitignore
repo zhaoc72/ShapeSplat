@@ -1,0 +1,12 @@
+__pycache__/
+*.pyc
+.venv/
+venv/
+outputs/
+*.pt
+*.pth
+.DS_Store
+.vscode/
+.pytest_cache/
+.pytest_tmp/
+.pytest_basetemp/
