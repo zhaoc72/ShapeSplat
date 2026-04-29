@@ -274,3 +274,34 @@ python scripts/print_ablation_table.py --summary outputs/ablations/ablation_summ
 ## 实验注意
 
 主实验应采用 same-mask setting，保证和 baselines 公平：不同方法使用相同 visible masks，避免 segmentation 质量差异混入 3D reconstruction/editability 的比较。
+## Shape Bank / Hidden Support Prior
+
+默认配置使用 `ToyShapeBank`，只包含 sphere / box / cylinder，目的是让 hidden support prior 的代码路径可以 smoke test。它不是正式实验用的 shape prior。
+
+创建一个 file backend 可读取的 toy 点云库：
+
+```bash
+python scripts/create_toy_shape_bank.py --out examples/shape_bank --num-points 512 --descriptor-dim 16
+```
+
+检查默认 toy shape bank：
+
+```bash
+python scripts/check_shape_bank.py --config configs/minimal.yaml --backend toy --out outputs/check_shape_toy
+```
+
+检查 file shape bank：
+
+```bash
+python scripts/check_shape_bank.py --config configs/minimal.yaml --backend file --root examples/shape_bank --out outputs/check_shape_file
+```
+
+使用 file shape bank 运行最小 pipeline：
+
+```bash
+python scripts/run_minimal.py --config configs/file_shape_bank.yaml --input examples/test_image.png --out outputs/file_shape_bank --eval
+```
+
+`FileShapeBank` 目前支持 `.npz` / `.npy` point cloud。`.npz` 至少需要包含 `points [P,3]`，可选包含 `descriptor [D]`、`descriptors [V,D]` 和 `category`。如果没有 descriptor，当前 minimal 版本可以生成 deterministic random descriptor，后续应替换为真实 DINOv3 多视角 shape descriptor 预计算。
+
+正式论文实验时，shape bank 必须与测试实例 train/test instance-disjoint，避免检索泄漏。hidden support prior 是 soft prior，不是 hard template fitting。

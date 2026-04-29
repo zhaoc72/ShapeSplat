@@ -1,11 +1,12 @@
 seed: 7
 device: auto
+
 image:
   size: 64
   input_path: null
 
 frontend:
-  # SAM backend: stub / real / auto。默认 stub，不要求真实 SAM3 依赖。
+  # SAM backend: stub / real / auto. 默认 stub 不需要真实 SAM3 依赖。
   sam_backend: stub
   sam3_checkpoint: null
   sam3_model_type: null
@@ -16,20 +17,15 @@ frontend:
   sam3_score_threshold: 0.5
   sam3_max_masks: 8
 
-  # DINO backend: stub / real / auto。默认 stub，不要求真实 DINOv3 依赖。
+  # DINO backend: stub / real / auto. dino_backend 只控制 descriptor extractor。
   dino_backend: stub
-  # 真实 DINOv3 模型名称，可对应官方 repo / torch hub / transformers wrapper。
   dino_model_name: null
-  # 可选本地 checkpoint；real 模式中如果路径不存在会报错，auto 模式 fallback。
   dino_checkpoint: null
   dino_device: auto
   dino_feature_layer: last
   dino_feature_dim: null
-  # 真实 DINOv3 前向时可选 resize size；null 表示使用当前 image size。
   dino_input_size: null
-  # 是否对 dense features 和 pooled descriptors 做 L2 normalize。
   dino_l2_normalize: true
-  # mask-guided descriptor pooling：腐蚀/内部权重减少边界污染，小 mask 使用 bbox fallback。
   dino_pooling:
     use_eroded_mask: true
     erosion_kernel: 5
@@ -37,18 +33,13 @@ frontend:
     fallback_to_bbox_crop_for_small_masks: true
     small_mask_area_ratio: 0.005
 
-  # Depth backend: stub / real / auto。默认 stub，不要求真实 depth model。
+  # Depth backend: stub / real / auto. depth 只是 weak initialization/layout cue。
   depth_backend: stub
-  # 真实 depth 模型名称，可对应本地 wrapper / torch hub / transformers 模型名。
   depth_model_name: null
-  # 可选本地 checkpoint；real 模式中如果路径不存在会报错，auto 模式 fallback。
   depth_checkpoint: null
   depth_device: auto
-  # 真实 depth 模型前向时可选 resize size；null 表示使用当前 image size。
   depth_input_size: null
-  # 某些模型输出 inverse depth/disparity；true 时会先转成 depth-like map。
   depth_inverse: false
-  # 单目深度只有相对尺度，进入 Gaussian 前默认归一化到 canonical z range。
   depth_normalize: true
   depth_normalize_on_foreground: true
   depth_percentile_low: 2.0
@@ -80,6 +71,31 @@ retrieval:
   confidence_low: 0.15
   confidence_high: 0.80
   support_sigma: 0.18
+  # 如果 shape asset 有 descriptors [V,D]，检索时使用 max-over-views similarity。
+  use_multi_view_descriptors: true
+  temperature: 0.07
+
+shape_bank:
+  # toy / file / auto。默认 toy 使用 sphere/box/cylinder smoke-test bank。
+  backend: toy
+  # file backend 的本地点云目录；null 时 file 报错，auto fallback toy。
+  root: null
+  # 缺少 shape descriptor 时 fallback descriptor 的维度；null 表示使用 DINO descriptor dim。
+  descriptor_dim: null
+  # 每个 shape 下采样/补采样后的点数。
+  num_points: 512
+  # 是否将点云中心化并缩放到 canonical unit bbox。
+  normalize_points: true
+  center_points: true
+  scale_to_unit: true
+  file_extensions:
+    - .npz
+    - .npy
+  max_shapes: null
+  fallback_to_toy: true
+  # 如果 shape 文件没有 descriptor，生成 deterministic random descriptor 以保持最小版可运行。
+  random_descriptor_if_missing: true
+  descriptor_seed: 123
 
 renderer:
   beta_depth: 1.5
@@ -111,19 +127,28 @@ loss_weights:
 edit:
   dilate_radius: 3
 
-# 消融开关默认保持主方法开启。
 ablation:
-  # DINO backend 控制 descriptor extractor 是 stub 还是真实 DINOv3；
-  # use_dino_retrieval 只控制 shape retrieval 是否使用 descriptor。
+  # visible-hidden factorized Gaussian representation。
   use_visible_hidden_split: true
+  # 是否初始化 hidden Gaussian branch。
   use_hidden_branch: true
+  # confidence-weighted hidden support prior loss。
   use_hidden_prior: true
+  # 是否用 retrieval confidence 控制 hidden budget / prior strength。
   use_confidence_weighting: true
+  # 是否使用 DINO descriptor 做 shape retrieval；与 dino_backend 不同。
   use_dino_retrieval: true
+  # scene-level compositional RGB loss。
   use_scene_loss: true
+  # identity / ownership loss，防止 object 合并或 same-category swap。
   use_ownership_loss: true
+  # weak depth consistency loss。
   use_depth_loss: true
+  # background leakage loss。
   use_bg_loss: true
+  # visible-hidden continuity bridge loss。
   use_bridge_loss: true
+  # differentiable edit-consistency loss。
   use_edit_consistency: true
+  # 预留 layout loss 开关，minimal 版本默认权重为 0。
   use_layout_loss: true

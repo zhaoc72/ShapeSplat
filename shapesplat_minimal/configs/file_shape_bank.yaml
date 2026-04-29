@@ -1,0 +1,42 @@
+seed: 7
+device: auto
+
+image:
+  size: 64
+  input_path: null
+
+frontend:
+  sam_backend: stub
+  dino_backend: stub
+  # file shape bank 示例由 create_toy_shape_bank.py 生成 16 维 descriptor。
+  # 这里让 DinoV3Stub 输出同样维度，真实 DINOv3 接入时应改成真实 descriptor 维度。
+  dino_feature_dim: 16
+  depth_backend: stub
+  max_num_objects: 4
+  min_area_ratio: 0.002
+  mask_conf_threshold: 0.2
+
+shape_bank:
+  # 从 examples/shape_bank 读取 .npz/.npy 点云。默认不 fallback，方便发现路径错误。
+  backend: file
+  root: examples/shape_bank
+  descriptor_dim: 16
+  num_points: 512
+  normalize_points: true
+  center_points: true
+  scale_to_unit: true
+  file_extensions:
+    - .npz
+    - .npy
+  max_shapes: null
+  fallback_to_toy: false
+  random_descriptor_if_missing: true
+  descriptor_seed: 123
+
+retrieval:
+  top_k: 3
+  confidence_low: 0.15
+  confidence_high: 0.80
+  support_sigma: 0.18
+  use_multi_view_descriptors: true
+  temperature: 0.07

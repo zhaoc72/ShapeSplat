@@ -26,7 +26,27 @@ class DinoV3Stub:
             dim=0,
         )
         feats = torch.cat([image, xs, ys, pe], dim=0)
-        if self.cfg.get("frontend", self.cfg).get("dino_l2_normalize", True):
+        frontend_cfg = self.cfg.get("frontend", self.cfg)
+        target_dim = frontend_cfg.get("dino_feature_dim")
+        if target_dim is not None:
+            # file shape bank 可能使用预计算 descriptor 维度。stub 默认只有 RGB+坐标+
+            # 位置编码 9 维；这里按配置补充确定性位置通道，保证真实 DINOv3 接入前也能
+            # smoke test 不同 descriptor_dim 的 file bank。
+            target_dim = int(target_dim)
+            if target_dim < feats.shape[0]:
+                feats = feats[:target_dim]
+            elif target_dim > feats.shape[0]:
+                extras = []
+                i = 0
+                while feats.shape[0] + len(extras) < target_dim:
+                    freq = float(i + 2)
+                    extras.append(torch.sin(freq * 3.1416 * xs).squeeze(0))
+                    if feats.shape[0] + len(extras) >= target_dim:
+                        break
+                    extras.append(torch.cos(freq * 3.1416 * ys).squeeze(0))
+                    i += 1
+                feats = torch.cat([feats, torch.stack(extras, dim=0)], dim=0)
+        if frontend_cfg.get("dino_l2_normalize", True):
             feats = F.normalize(feats, dim=0)
         return feats
 
