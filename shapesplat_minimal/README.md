@@ -161,6 +161,46 @@ python scripts/check_dino_backend.py --config configs/minimal.yaml --backend rea
 
 `RealDINOv3Wrapper` 是可选接口；真实 DINOv3 API 可能需要根据本地安装方式调整。项目其余模块只依赖统一的 dense features 和 descriptors，不关心具体 DINO 实现。DINOv3 在本项目中始终是 frozen dense descriptor extractor。
 
+## Optional Real Depth Backend / 可选真实深度前端
+
+默认仍然使用 stub：
+
+```yaml
+frontend:
+  depth_backend: stub
+```
+
+自动模式会优先尝试真实 depth model，如果依赖或 checkpoint 不可用，会 fallback 到 `DepthStub`：
+
+```yaml
+frontend:
+  depth_backend: auto
+  depth_checkpoint: path/to/checkpoint
+```
+
+真实模式会强制使用 `RealDepthWrapper`，如果 checkpoint 或依赖缺失会报错：
+
+```yaml
+frontend:
+  depth_backend: real
+  depth_model_name: your_model_name
+  depth_checkpoint: path/to/checkpoint
+```
+
+检查 depth backend：
+
+```bash
+python scripts/check_depth_backend.py --config configs/minimal.yaml --backend stub --out outputs/check_depth_stub
+```
+
+如果有真实 depth model：
+
+```bash
+python scripts/check_depth_backend.py --config configs/minimal.yaml --backend real --input examples/test_image.png --out outputs/check_depth_real
+```
+
+`RealDepthWrapper` 是可选接口；真实 depth API 可能需要根据本地安装方式调整。Depth 在 ShapeSplat++ 中只作为 weak initialization / layout cue，不是 oracle geometry；所有 depth 都会归一化到 canonical camera range。
+
 ## Evaluation Metrics / 最小评估指标
 
 当前 minimal 版本支持：

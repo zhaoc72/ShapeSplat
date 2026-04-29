@@ -46,7 +46,12 @@ def initialize_scene(frontend_output: FrontEndOutput, cfg: Dict[str, Any]) -> Ob
         perm = torch.randperm(area, device=device)[:k_vis]
         pix_y, pix_x = ys[perm].float(), xs[perm].float()
         uv = torch.stack([pix_x, pix_y], dim=-1)
-        depth = front.depth[ys[perm], xs[perm]]
+        # depth 是 weak initialization，不是 GT geometry；真实 monocular depth 可能有局部异常。
+        sampled_depth = front.depth[ys[perm], xs[perm]]
+        fg_depth = front.depth[mask > 0.5]
+        valid_fg = torch.isfinite(fg_depth) & (fg_depth > 0)
+        fill_depth = fg_depth[valid_fg].median() if bool(valid_fg.any()) else torch.tensor(cfg["camera"]["z_near"], device=device)
+        depth = torch.where(torch.isfinite(sampled_depth) & (sampled_depth > 0), sampled_depth, fill_depth)
         vis_means = front.camera.unproject(uv, depth)
         vis_colors = front.image[:, ys[perm], xs[perm]].T.clamp(1e-4, 1 - 1e-4)
 

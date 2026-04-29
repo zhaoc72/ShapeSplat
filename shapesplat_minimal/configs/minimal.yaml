@@ -37,6 +37,24 @@ frontend:
     fallback_to_bbox_crop_for_small_masks: true
     small_mask_area_ratio: 0.005
 
+  # Depth backend: stub / real / auto。默认 stub，不要求真实 depth model。
+  depth_backend: stub
+  # 真实 depth 模型名称，可对应本地 wrapper / torch hub / transformers 模型名。
+  depth_model_name: null
+  # 可选本地 checkpoint；real 模式中如果路径不存在会报错，auto 模式 fallback。
+  depth_checkpoint: null
+  depth_device: auto
+  # 真实 depth 模型前向时可选 resize size；null 表示使用当前 image size。
+  depth_input_size: null
+  # 某些模型输出 inverse depth/disparity；true 时会先转成 depth-like map。
+  depth_inverse: false
+  # 单目深度只有相对尺度，进入 Gaussian 前默认归一化到 canonical z range。
+  depth_normalize: true
+  depth_normalize_on_foreground: true
+  depth_percentile_low: 2.0
+  depth_percentile_high: 98.0
+  depth_min_valid: 1.0e-6
+
   max_num_objects: 4
   min_area_ratio: 0.002
   mask_conf_threshold: 0.2

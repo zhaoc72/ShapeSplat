@@ -87,6 +87,23 @@ def save_render_outputs(render: RenderOutput, out_dir: str | Path) -> None:
     save_object_alphas(render.ownership, out_dir)
 
 
+def save_depth_map(depth: torch.Tensor, path: str | Path, normalize: bool = True) -> None:
+    """保存 depth 可视化图。
+
+    normalize=True 时仅用于可视化映射到 [0,1]，不表示 metric depth。
+    """
+    d = depth.detach().cpu().float()
+    finite = torch.isfinite(d)
+    if normalize:
+        if bool(finite.any()):
+            vals = d[finite]
+            lo, hi = vals.min(), vals.max()
+            d = (torch.where(finite, d, vals.median()) - lo) / (hi - lo).clamp_min(1e-6)
+        else:
+            d = torch.zeros_like(d)
+    save_tensor_image(d.clamp(0, 1), path)
+
+
 def save_input_with_mask_overlay(image: torch.Tensor, masks: torch.Tensor, path: str | Path) -> None:
     """把 masks 半透明叠加到输入图上，方便检查真实 RGB 输入的 stub mask 是否合理。"""
     if masks.shape[0] == 0:

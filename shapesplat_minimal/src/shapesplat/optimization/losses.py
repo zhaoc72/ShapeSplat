@@ -40,7 +40,13 @@ def compute_losses(
         rgb_l1 = ((render.rgb - front.image).abs() * fg[None]).sum() / (fg.sum() * 3).clamp_min(1)
         losses["visible_rgb"] = rgb_l1
         losses["scene"] = rgb_l1
-        losses["visible_depth"] = ((render.depth - front.depth).abs() * fg).sum() / fg.sum().clamp_min(1)
+        # depth consistency 是弱约束；只在 foreground 和有效 depth 上计算，避免把单目深度错误过强传给 3D Gaussians。
+        valid_depth = torch.isfinite(front.depth) & torch.isfinite(render.depth) & (front.depth > 0)
+        depth_mask = fg * valid_depth.float()
+        if depth_mask.sum() > 0 and float(w.get("visible_depth", 0.0)) > 0:
+            losses["visible_depth"] = ((render.depth - front.depth).abs() * depth_mask).sum() / depth_mask.sum().clamp_min(1)
+        else:
+            losses["visible_depth"] = _zero(device)
     else:
         losses["visible_rgb"] = losses["scene"] = losses["visible_depth"] = _zero(device)
 
