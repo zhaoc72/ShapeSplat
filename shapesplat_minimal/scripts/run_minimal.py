@@ -17,6 +17,9 @@ if str(SRC) not in sys.path:
 from shapesplat.config import load_config
 from shapesplat.data.image_io import load_image, save_tensor_image
 from shapesplat.data.synthetic import make_synthetic_image
+from shapesplat.evaluation.edit_metrics import compute_edit_metrics
+from shapesplat.evaluation.metrics import compute_basic_metrics
+from shapesplat.evaluation.report import merge_metrics, print_metrics, save_metrics_json
 from shapesplat.frontend.pipeline import build_frontend
 from shapesplat.optimization.trainer import Trainer
 from shapesplat.utils.logging import save_json
@@ -29,10 +32,11 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--config", required=True, help="配置文件路径，例如 configs/minimal.yaml")
     parser.add_argument("--out", required=True, help="输出目录，例如 outputs/minimal")
     parser.add_argument("--input", default=None, help="可选输入 RGB 图像；为空时使用 config 或 synthetic 图")
+    parser.add_argument("--eval", action="store_true", help="训练完成后计算 minimal evaluation metrics")
     return parser.parse_args()
 
 
-def run_pipeline(config_path: str | Path, out: str | Path, input_path: str | Path | None = None) -> Path:
+def run_pipeline(config_path: str | Path, out: str | Path, input_path: str | Path | None = None, do_eval: bool = False) -> Path:
     """运行最小 ShapeSplat++ pipeline。
 
     输入优先级为：CLI --input > cfg['image']['input_path'] > synthetic image。
@@ -68,13 +72,19 @@ def run_pipeline(config_path: str | Path, out: str | Path, input_path: str | Pat
     save_render_outputs(render, out_dir)
     save_json(loss_log, out_dir / "loss_log.json")
     trainer.save_checkpoint(out_dir / "checkpoint_minimal.pt")
+    if do_eval:
+        basic = compute_basic_metrics(render, front.masks)
+        edit = compute_edit_metrics(trainer.scene, trainer.renderer, front, render, cfg, object_id=0)
+        metrics = merge_metrics(basic, edit)
+        save_metrics_json(metrics, out_dir / "metrics.json")
+        print_metrics(metrics)
     print(f"ShapeSplat++ minimal outputs saved to: {out_dir.resolve()}")
     return out_dir
 
 
 def main() -> None:
     args = parse_args()
-    run_pipeline(args.config, args.out, args.input)
+    run_pipeline(args.config, args.out, args.input, do_eval=args.eval)
 
 
 if __name__ == "__main__":

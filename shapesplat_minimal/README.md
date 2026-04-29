@@ -115,6 +115,37 @@ python scripts/run_all_checks.py --config configs/minimal.yaml --out outputs/rea
 
 当前仍然使用 `Sam3Stub`、`DinoV3Stub`、`DepthStub` 和 `SoftGaussianRenderer`。这一步只验证真实图像输入、resize、front-end stub、Gaussian 初始化、renderer、loss 和保存逻辑是否稳定。
 
+## Evaluation Metrics / 最小评估指标
+
+当前 minimal 版本支持以下轻量指标：
+
+- Inst-IoU
+- AttrAcc
+- AttrPurity
+- Leakage
+- Iso-IoU
+- DeletionResidual
+- EditLocality
+- CollateralL1
+
+这些指标主要用于检查 object ownership、foreground leakage 和 editing stability。当前没有实现 Chamfer / F-score / LPIPS：Chamfer / F-score 需要 GT mesh 和对齐协议，后续实验版本再加入；`CollateralL1` 是 Collateral LPIPS 的 lightweight proxy。
+
+使用独立评估脚本：
+
+```bash
+python scripts/evaluate_minimal.py --config configs/minimal.yaml --input examples/test_image.png --out outputs/eval_real_input
+```
+
+也可以在最小 demo 后直接评估：
+
+```bash
+python scripts/run_minimal.py --config configs/minimal.yaml --input examples/test_image.png --out outputs/real_input --eval
+```
+
+输出文件：
+
+- `metrics.json`：2D ownership / leakage / edit stability 指标。
+
 ## 后续真实模块替换路线
 
 - `Sam3Stub` -> `RealSAM3Wrapper`
