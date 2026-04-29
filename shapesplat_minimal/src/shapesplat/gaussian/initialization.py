@@ -27,8 +27,8 @@ def initialize_scene(frontend_output: FrontEndOutput, cfg: Dict[str, Any]) -> Ob
     device = front.image.device
     bank = ToyShapeBank(front.descriptors.shape[1], device)
     ab = cfg.get("ablation", {})
-    # DINO retrieval 消融：不使用 instance descriptor 检索，固定使用第一个 toy shape。
-    # 这用于测试 mask-guided DINO descriptor retrieval 对 hidden completion 的贡献。
+    # DINO retrieval 消融：dino_backend 控制 descriptor extractor 是 stub 还是真实 DINOv3；
+    # use_dino_retrieval 只控制 shape retrieval 是否使用 descriptor。关闭后固定使用第一个 toy shape。
     if ab.get("use_dino_retrieval", True):
         retrieved, weights, conf = retrieve_shapes(front.descriptors, bank, cfg["retrieval"]["top_k"])
     else:

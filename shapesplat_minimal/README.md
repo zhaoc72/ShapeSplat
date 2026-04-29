@@ -121,6 +121,46 @@ python scripts/check_sam_backend.py --config configs/minimal.yaml --backend real
 
 `RealSAM3Wrapper` 是可选接口；真实 SAM3 API 可能需要根据本地安装方式调整。项目其余模块只依赖统一的 `MaskSet` 输出，不关心具体 SAM 实现。
 
+## Optional Real DINOv3 Backend / 可选真实 DINOv3 前端
+
+默认仍然使用 stub：
+
+```yaml
+frontend:
+  dino_backend: stub
+```
+
+自动模式会优先尝试真实 DINOv3，如果依赖或 checkpoint 不可用，会 fallback 到 `DinoV3Stub`：
+
+```yaml
+frontend:
+  dino_backend: auto
+  dino_checkpoint: path/to/checkpoint
+```
+
+真实模式会强制使用 `RealDINOv3Wrapper`，如果 checkpoint 或依赖缺失会报错：
+
+```yaml
+frontend:
+  dino_backend: real
+  dino_model_name: your_model_name
+  dino_checkpoint: path/to/checkpoint
+```
+
+检查 DINO backend：
+
+```bash
+python scripts/check_dino_backend.py --config configs/minimal.yaml --backend stub --out outputs/check_dino_stub
+```
+
+如果有真实 DINOv3：
+
+```bash
+python scripts/check_dino_backend.py --config configs/minimal.yaml --backend real --input examples/test_image.png --out outputs/check_dino_real
+```
+
+`RealDINOv3Wrapper` 是可选接口；真实 DINOv3 API 可能需要根据本地安装方式调整。项目其余模块只依赖统一的 dense features 和 descriptors，不关心具体 DINO 实现。DINOv3 在本项目中始终是 frozen dense descriptor extractor。
+
 ## Evaluation Metrics / 最小评估指标
 
 当前 minimal 版本支持：

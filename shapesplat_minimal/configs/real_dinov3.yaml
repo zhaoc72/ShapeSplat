@@ -1,3 +1,5 @@
+# 可选真实 DINOv3 配置示例。
+# 用户需要根据自己的 DINOv3 安装方式填写 dino_model_name 或 dino_checkpoint。
 seed: 7
 device: auto
 image:
@@ -5,7 +7,6 @@ image:
   input_path: null
 
 frontend:
-  # SAM backend: stub / real / auto。默认 stub，不要求真实 SAM3 依赖。
   sam_backend: stub
   sam3_checkpoint: null
   sam3_model_type: null
@@ -15,28 +16,20 @@ frontend:
     - object
   sam3_score_threshold: 0.5
   sam3_max_masks: 8
-
-  # DINO backend: stub / real / auto。默认 stub，不要求真实 DINOv3 依赖。
-  dino_backend: stub
-  # 真实 DINOv3 模型名称，可对应官方 repo / torch hub / transformers wrapper。
+  dino_backend: auto
   dino_model_name: null
-  # 可选本地 checkpoint；real 模式中如果路径不存在会报错，auto 模式 fallback。
   dino_checkpoint: null
   dino_device: auto
   dino_feature_layer: last
   dino_feature_dim: null
-  # 真实 DINOv3 前向时可选 resize size；null 表示使用当前 image size。
   dino_input_size: null
-  # 是否对 dense features 和 pooled descriptors 做 L2 normalize。
   dino_l2_normalize: true
-  # mask-guided descriptor pooling：腐蚀/内部权重减少边界污染，小 mask 使用 bbox fallback。
   dino_pooling:
     use_eroded_mask: true
     erosion_kernel: 5
     use_distance_weight: true
     fallback_to_bbox_crop_for_small_masks: true
     small_mask_area_ratio: 0.005
-
   max_num_objects: 4
   min_area_ratio: 0.002
   mask_conf_threshold: 0.2
@@ -93,10 +86,7 @@ loss_weights:
 edit:
   dilate_radius: 3
 
-# 消融开关默认保持主方法开启。
 ablation:
-  # DINO backend 控制 descriptor extractor 是 stub 还是真实 DINOv3；
-  # use_dino_retrieval 只控制 shape retrieval 是否使用 descriptor。
   use_visible_hidden_split: true
   use_hidden_branch: true
   use_hidden_prior: true
