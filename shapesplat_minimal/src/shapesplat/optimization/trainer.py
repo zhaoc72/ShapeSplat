@@ -33,6 +33,7 @@ class Trainer:
         )
         self.optim = torch.optim.Adam(self.scene.parameters(), lr=cfg["training"]["lr"])
         self.loss_log: List[Dict[str, float | str | int]] = []
+        self.global_step = 0
 
     def render(self) -> RenderOutput:
         return self.renderer(self.scene)
@@ -42,7 +43,11 @@ class Trainer:
         render = self.render()
         loss, terms = compute_losses(self.scene, self.renderer, render, self.front, self.cfg, stage)
         if stage == "edit":
-            e_rgb, e_alpha = edit_consistency_loss(self.scene, self.renderer, self.front, render, self.cfg)
+            if self.cfg.get("ablation", {}).get("use_edit_consistency", True):
+                e_rgb, e_alpha = edit_consistency_loss(self.scene, self.renderer, self.front, render, self.cfg)
+            else:
+                e_rgb = torch.tensor(0.0, device=self.front.image.device)
+                e_alpha = torch.tensor(0.0, device=self.front.image.device)
             loss = loss + self.cfg["loss_weights"]["edit"] * e_rgb + self.cfg["loss_weights"]["edit_alpha"] * e_alpha
             terms["edit"] = float(e_rgb.detach().cpu())
             terms["edit_alpha"] = float(e_alpha.detach().cpu())
@@ -50,8 +55,9 @@ class Trainer:
         loss.backward()
         clip_grad_norm_(self.scene.parameters(), max_norm=1.0)
         self.optim.step()
-        row = {"stage": stage, "iter": it, **terms}
+        row = {"global_step": self.global_step, "stage": stage, "iter": it, "ablation_name": self.cfg.get("ablation_name", "full"), **terms}
         self.loss_log.append(row)
+        self.global_step += 1
         if it % self.cfg["training"]["log_every"] == 0:
             print(f"[{stage} {it:03d}] loss={row['total']:.4f}")
 

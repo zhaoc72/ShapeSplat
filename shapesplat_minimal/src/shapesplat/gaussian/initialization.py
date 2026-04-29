@@ -26,7 +26,15 @@ def initialize_scene(frontend_output: FrontEndOutput, cfg: Dict[str, Any]) -> Ob
     front = frontend_output
     device = front.image.device
     bank = ToyShapeBank(front.descriptors.shape[1], device)
-    retrieved, weights, conf = retrieve_shapes(front.descriptors, bank, cfg["retrieval"]["top_k"])
+    ab = cfg.get("ablation", {})
+    # DINO retrieval 消融：不使用 instance descriptor 检索，固定使用第一个 toy shape。
+    # 这用于测试 mask-guided DINO descriptor retrieval 对 hidden completion 的贡献。
+    if ab.get("use_dino_retrieval", True):
+        retrieved, weights, conf = retrieve_shapes(front.descriptors, bank, cfg["retrieval"]["top_k"])
+    else:
+        retrieved = [[bank.shapes[0]] for _ in range(front.descriptors.shape[0])]
+        weights = torch.ones((front.descriptors.shape[0], 1), device=device)
+        conf = torch.ones((front.descriptors.shape[0],), device=device)
     objects, metas = [], []
     gcfg, rcfg = cfg["gaussians"], cfg["retrieval"]
 
@@ -42,8 +50,16 @@ def initialize_scene(frontend_output: FrontEndOutput, cfg: Dict[str, Any]) -> Ob
         vis_means = front.camera.unproject(uv, depth)
         vis_colors = front.image[:, ys[perm], xs[perm]].T.clamp(1e-4, 1 - 1e-4)
 
-        s = ((conf[n] - rcfg["confidence_low"]) / (rcfg["confidence_high"] - rcfg["confidence_low"])).clamp(0, 1)
-        k_hid = int(torch.floor(s * gcfg["hidden_base"]).item()) if gcfg["use_hidden"] else 0
+        # confidence weighting 消融：关闭后 hidden budget 固定为最大 strength=1。
+        if ab.get("use_confidence_weighting", True):
+            s = ((conf[n] - rcfg["confidence_low"]) / (rcfg["confidence_high"] - rcfg["confidence_low"])).clamp(0, 1)
+            retrieval_confidence = conf[n].detach()
+        else:
+            s = torch.tensor(1.0, device=device)
+            retrieval_confidence = torch.tensor(1.0, device=device)
+        # hidden branch 消融：关闭后不创建 hidden Gaussians。
+        hidden_enabled = bool(gcfg["use_hidden"] and ab.get("use_hidden_branch", True))
+        k_hid = int(torch.floor(s * gcfg["hidden_base"]).item()) if hidden_enabled else 0
         support_field = SoftSupportField(retrieved[n], weights[n], rcfg["support_sigma"]) if retrieved else None
 
         if k_hid > 0:
@@ -66,9 +82,13 @@ def initialize_scene(frontend_output: FrontEndOutput, cfg: Dict[str, Any]) -> Ob
         hid_op = _opacity_to_logit(gcfg["hidden_opacity"], device).expand(k_hid, 1)
         opacity_logits = torch.cat([vis_op, hid_op], dim=0)
         branch_ids = torch.cat([torch.zeros(k_vis, device=device), torch.ones(k_hid, device=device)]).long()
+        # visible-hidden split 消融：即使存在 hidden samples，也把它们视为 visible branch，
+        # 模拟没有 factorized representation 的单一 object Gaussian buffer。
+        if not ab.get("use_visible_hidden_split", True):
+            branch_ids = torch.zeros_like(branch_ids)
         obj = GaussianObject(means, log_scales, opacity_logits, colors_logits, branch_ids, n)
         objects.append(obj)
-        metas.append(ObjectMeta(n, mask.detach(), front.descriptors[n].detach(), conf[n].detach(), support_field, k_vis, k_hid))
+        metas.append(ObjectMeta(n, mask.detach(), front.descriptors[n].detach(), retrieval_confidence, support_field, k_vis, k_hid))
 
     if not objects:
         raise RuntimeError("SAM3 stub 没有产生任何前景 mask，无法初始化 scene。")

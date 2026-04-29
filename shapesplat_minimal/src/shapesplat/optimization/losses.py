@@ -29,6 +29,7 @@ def compute_losses(
     hidden_prior/bridge 防 hidden hallucination；bg 防前景泄漏；edit 防编辑 collateral change。
     """
     w = cfg["loss_weights"]
+    ab = cfg.get("ablation", {})
     device = front.image.device
     fg = union_mask(front.masks).to(device)
     bg = 1.0 - fg
@@ -79,12 +80,36 @@ def compute_losses(
     for obj in scene.objects:
         regs.append(obj.log_scales.square().mean() + obj.opacity_logits.sigmoid().mean() * 0.01)
     losses["reg"] = torch.stack(regs).mean()
+    # layout loss 当前 minimal 版本只是预留项；保留 key 方便 ablation 日志对齐。
+    losses["layout"] = _zero(device)
+
+    # Ablation gates：保留 term key，但把被关闭模块置为 device 上的 0 tensor。
+    # scene loss: 跨物体组合一致性；关闭后只保留 visible_rgb 等局部约束。
+    if not ab.get("use_scene_loss", True):
+        losses["scene"] = _zero(device)
+    # identity loss: object ownership / same-category swap；关闭后更容易发生物体归属混淆。
+    if not ab.get("use_ownership_loss", True):
+        losses["identity"] = _zero(device)
+    # weak depth loss: 单图 layout cue；关闭后深度排序约束变弱。
+    if not ab.get("use_depth_loss", True):
+        losses["visible_depth"] = _zero(device)
+    # hidden prior: hidden completion；关闭后 hidden branch 不受 soft shape support 约束。
+    if not ab.get("use_hidden_prior", True):
+        losses["hidden_prior"] = _zero(device)
+    # bridge: visible-hidden continuity；关闭后 hidden 与 visible 更容易断裂。
+    if not ab.get("use_bridge_loss", True):
+        losses["bridge"] = _zero(device)
+    # bg loss: foreground/background leakage；关闭后 alpha 更可能泄漏到背景。
+    if not ab.get("use_bg_loss", True):
+        losses["bg"] = _zero(device)
+    if not ab.get("use_layout_loss", True):
+        losses["layout"] = _zero(device)
 
     active = {
-        "visible": ["visible_rgb", "visible_alpha", "visible_depth", "scene", "identity", "bg", "reg"],
+        "visible": ["visible_rgb", "visible_alpha", "visible_depth", "scene", "identity", "bg", "layout", "reg"],
         "hidden": ["visible_rgb", "visible_alpha", "hidden_prior", "bridge", "bg", "reg"],
-        "joint": ["visible_rgb", "visible_alpha", "visible_depth", "scene", "identity", "hidden_prior", "bridge", "bg", "reg"],
-        "edit": ["visible_rgb", "visible_alpha", "scene", "identity", "hidden_prior", "bridge", "bg", "reg"],
+        "joint": ["visible_rgb", "visible_alpha", "visible_depth", "scene", "identity", "hidden_prior", "bridge", "bg", "layout", "reg"],
+        "edit": ["visible_rgb", "visible_alpha", "scene", "identity", "hidden_prior", "bridge", "bg", "layout", "reg"],
     }[stage]
     total = sum(w[name] * losses[name] for name in active)
     terms = {k: float(v.detach().cpu()) for k, v in losses.items()}

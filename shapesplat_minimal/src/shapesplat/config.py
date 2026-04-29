@@ -50,6 +50,21 @@ DEFAULT_CONFIG: Dict[str, Any] = {
         "edit_alpha": 0.05,
     },
     "edit": {"dilate_radius": 3},
+    "ablation": {
+        "use_visible_hidden_split": True,
+        "use_hidden_branch": True,
+        "use_hidden_prior": True,
+        "use_confidence_weighting": True,
+        "use_dino_retrieval": True,
+        "use_scene_loss": True,
+        "use_ownership_loss": True,
+        "use_depth_loss": True,
+        "use_bg_loss": True,
+        "use_bridge_loss": True,
+        "use_edit_consistency": True,
+        "use_layout_loss": True,
+    },
+    "ablation_name": "full",
 }
 
 

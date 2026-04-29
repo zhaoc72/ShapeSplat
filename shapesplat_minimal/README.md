@@ -146,6 +146,42 @@ python scripts/run_minimal.py --config configs/minimal.yaml --input examples/tes
 
 - `metrics.json`：2D ownership / leakage / edit stability 指标。
 
+## Ablation Experiments / 消融实验
+
+当前支持的消融开关：
+
+- `use_visible_hidden_split`：visible-hidden factorized Gaussian representation。
+- `use_hidden_branch`：hidden Gaussian branch。
+- `use_hidden_prior`：confidence-weighted hidden support prior。
+- `use_confidence_weighting`：用 retrieval confidence 控制 hidden budget 和 prior strength。
+- `use_dino_retrieval`：mask-guided DINO descriptor retrieval。
+- `use_scene_loss`：scene-level compositional RGB loss。
+- `use_ownership_loss`：identity / ownership loss。
+- `use_depth_loss`：weak depth consistency loss。
+- `use_bg_loss`：background leakage loss。
+- `use_bridge_loss`：visible-hidden bridge loss。
+- `use_edit_consistency`：differentiable edit-consistency loss。
+
+运行默认消融：
+
+```bash
+python scripts/run_ablation.py --config configs/minimal.yaml --ablations configs/ablations.yaml --input examples/test_image.png --out outputs/ablations
+```
+
+调试时只跑前 3 个：
+
+```bash
+python scripts/run_ablation.py --config configs/minimal.yaml --ablations configs/ablations.yaml --input examples/test_image.png --out outputs/ablations_debug --max-experiments 3
+```
+
+打印结果表：
+
+```bash
+python scripts/print_ablation_table.py --summary outputs/ablations/ablation_summary.json
+```
+
+当前 ablation 只是 minimal pipeline 的工程级消融，用于验证代码路径和指标是否工作；正式论文实验需要真实 SAM3/DINOv3、真实 shape bank、真实 renderer 和正式 benchmark。
+
 ## 后续真实模块替换路线
 
 - `Sam3Stub` -> `RealSAM3Wrapper`

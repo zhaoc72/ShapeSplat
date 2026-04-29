@@ -60,3 +60,30 @@ loss_weights:
 
 edit:
   dilate_radius: 3
+
+# 消融开关默认保持主方法开启。每个开关对应论文中的一个模块或稳定性约束。
+ablation:
+  # 是否使用 visible-hidden factorized Gaussian representation；关闭后所有 Gaussian 都视为 visible branch。
+  use_visible_hidden_split: true
+  # 是否初始化 hidden Gaussians；关闭后 K_hidden=0，用于测试 hidden branch 贡献。
+  use_hidden_branch: true
+  # 是否启用 confidence-weighted hidden support prior，关闭后 hidden completion 不受 shape prior 约束。
+  use_hidden_prior: true
+  # 是否用 retrieval confidence 控制 hidden budget/prior strength；关闭后固定 strength=1。
+  use_confidence_weighting: true
+  # 是否使用 DINO descriptor 做 toy shape retrieval；关闭后使用固定 toy shape，测试 descriptor retrieval 贡献。
+  use_dino_retrieval: true
+  # 是否启用 scene-level compositional RGB loss，测试跨物体组合一致性。
+  use_scene_loss: true
+  # 是否启用 identity ownership loss，测试 object ownership / same-category swap failure mode。
+  use_ownership_loss: true
+  # 是否启用 weak depth consistency loss，测试单图 layout cue 贡献。
+  use_depth_loss: true
+  # 是否启用 background leakage loss，测试前景 alpha 泄漏控制。
+  use_bg_loss: true
+  # 是否启用 visible-hidden bridge loss，测试 visible-hidden continuity。
+  use_bridge_loss: true
+  # 是否启用 differentiable edit-consistency loss，测试 editing collateral change 控制。
+  use_edit_consistency: true
+  # 预留 layout loss 开关；当前 minimal 版本 layout 权重仍为 0。
+  use_layout_loss: true
