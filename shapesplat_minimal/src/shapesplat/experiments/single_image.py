@@ -19,6 +19,7 @@ def run_single_image_experiment(
     cfg: dict,
     out_dir: str | Path,
     image_id: str = "image",
+    record=None,
     save_visuals: bool = True,
     save_checkpoint: bool = True,
     eval_metrics: bool = True,
@@ -34,7 +35,8 @@ def run_single_image_experiment(
     if save_visuals:
         save_tensor_image(image, out_path / "input.png")
 
-    front = build_frontend(image, cfg)
+    # batch experiment 中 record.metadata 可以携带 mask_path，从而启用 same-mask protocol。
+    front = build_frontend(image, cfg, record=record)
     if front.masks.shape[0] == 0:
         raise RuntimeError(f"{image_id}: front-end produced no masks.")
     if save_visuals:

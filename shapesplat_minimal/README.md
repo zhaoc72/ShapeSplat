@@ -389,3 +389,35 @@ outputs/dataset_run/
 ```
 
 当前 batch runner 仍然使用 minimal pipeline，用于验证多图运行、结果保存和 metrics 汇总。正式论文实验后续需要接真实 backend、正式数据集和 baseline。
+## Same-Mask Protocol / 固定 Mask 实验协议
+
+same-mask setting 用于公平比较 reconstruction quality、ownership 和 editing stability：所有方法共享同一组 retained visible instance masks，避免 proposal quality 干扰后续 3D 重建指标。这里的 masks 是可见实例 masks，不是 amodal masks；hidden branch 仍然只负责 plausible hidden support。
+
+单图 file mask 运行：
+```bash
+python scripts/run_minimal.py --config configs/same_mask.yaml --input examples/test_image.png --mask examples/test_mask.npy --out outputs/same_mask_single --eval
+```
+
+创建带 masks 的 example dataset：
+```bash
+python scripts/create_example_dataset.py --out examples/example_dataset --num-images 4 --size 128
+```
+
+检查 file masks：
+```bash
+python scripts/check_file_masks.py --image examples/example_dataset/images/example_000.png --mask examples/example_dataset/masks/example_000.npy --config configs/minimal.yaml --out outputs/check_file_masks
+```
+
+dataset same-mask 运行：
+```bash
+python scripts/run_dataset.py --config configs/same_mask.yaml --manifest examples/example_dataset/manifest.csv --out outputs/same_mask_dataset --mask-source file --max-images 3
+```
+
+支持的 mask 格式：
+- `.npy` stack: `[N,H,W]`
+- `.npy` label map: `[H,W]`
+- `.npz` with `masks` / `labels` / `instance_map`
+- `.png` label map
+- RGB instance PNG
+
+`frontend.mask_source` 控制 mask 从哪里来：`sam` 使用现有 SAM backend，`file` 必须读取给定 mask，`auto` 在存在 mask 文件时用 file，否则回退到 SAM。正式论文主实验建议默认使用 same-mask protocol。

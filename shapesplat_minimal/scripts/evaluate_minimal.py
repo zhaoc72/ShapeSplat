@@ -27,9 +27,15 @@ from shapesplat.utils.visualization import save_input_with_mask_overlay, save_ma
 
 
 def parse_args() -> argparse.Namespace:
+    """解析单图评估入口参数。
+
+    这里额外提供 --mask，便于 same-mask protocol 下直接指定固定的
+    retained visible instance masks；不传时仍保持旧行为，由配置决定 mask_source。
+    """
     parser = argparse.ArgumentParser(description="Evaluate ShapeSplat++ minimal outputs with 2D ownership/edit metrics.")
     parser.add_argument("--config", default="configs/minimal.yaml", help="配置文件路径")
     parser.add_argument("--input", default=None, help="可选输入 RGB 图像；为空时使用 config 或 synthetic 图")
+    parser.add_argument("--mask", default=None, help="可选 file mask 路径，用于 same-mask protocol")
     parser.add_argument("--out", default="outputs/eval_minimal", help="评估输出目录")
     parser.add_argument("--checkpoint", default=None, help="可选 checkpoint；结构不匹配时回退到重新训练结果")
     return parser.parse_args()
@@ -38,8 +44,8 @@ def parse_args() -> argparse.Namespace:
 def maybe_load_checkpoint(trainer: Trainer, checkpoint: str | Path | None) -> None:
     """尝试加载 checkpoint 中的 scene state_dict。
 
-    当前 scene 结构由 front-end mask 数量和采样数量决定，因此不同输入/配置可能不匹配；
-    不匹配时给出 warning 并继续使用刚训练得到的 scene。
+    最小版本的 scene 结构依赖当前 front-end mask 数量，因此 checkpoint 可能
+    与本次输入不匹配。失败时只打印 warning，并继续使用刚训练得到的 scene。
     """
     if checkpoint is None:
         return
@@ -62,6 +68,11 @@ def maybe_load_checkpoint(trainer: Trainer, checkpoint: str | Path | None) -> No
 def main() -> None:
     args = parse_args()
     cfg = load_config(args.config)
+    if args.mask is not None:
+        # same-mask protocol：命令行 mask 优先于配置文件，方便单图固定 mask 评估。
+        cfg["frontend"]["mask_source"] = "file"
+        cfg["frontend"]["mask_path"] = args.mask
+
     seed_everything(int(cfg["seed"]))
     out_dir = Path(args.out)
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -74,10 +85,11 @@ def main() -> None:
         print("No input image provided. Using synthetic image.")
         image = make_synthetic_image(int(cfg["image"]["size"]))
     save_tensor_image(image, out_dir / "input.png")
+    print(f"Mask source: {cfg['frontend'].get('mask_source', 'sam')}")
 
     front = build_frontend(image, cfg)
     if front.masks.shape[0] == 0:
-        raise RuntimeError("Front-end 没有检测到任何 mask，无法评估。")
+        raise RuntimeError("Front-end did not produce any mask. Please check SAM/file mask settings.")
     save_mask_grid(front.masks, out_dir / "masks.png")
     save_input_with_mask_overlay(front.image, front.masks, out_dir / "input_mask_overlay.png")
 

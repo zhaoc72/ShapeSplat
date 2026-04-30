@@ -55,6 +55,13 @@ def load_manifest(path: str | Path) -> list[ImageRecord]:
                 for key, value in row.items()
                 if key not in {"image_id", "image_path", "split"} and value not in (None, "")
             }
+            # mask_path 用于 same-mask setting。相对路径按 manifest 所在目录解析，
+            # 这样 dataset 可以整体移动，且 batch runner 能直接传给 file mask loader。
+            if "mask_path" in metadata:
+                mask_path = Path(str(metadata["mask_path"]))
+                if not mask_path.is_absolute():
+                    mask_path = manifest_path.parent / mask_path
+                metadata["mask_path"] = str(mask_path)
             records.append(ImageRecord(image_id=image_id, image_path=str(image_path), split=split, metadata=metadata))
 
     if not records:

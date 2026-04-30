@@ -6,6 +6,18 @@ image:
   input_path: null
 
 frontend:
+  # mask_source 控制 retained visible masks 从哪里来：sam / file / auto。
+  mask_source: sam
+  mask_path: null
+  mask_dir: null
+  mask_format: auto
+  mask_instance_mode: auto
+  # mask resize 必须使用 nearest，避免 instance id 被插值污染。
+  mask_resize_mode: nearest
+  mask_min_area_ratio: 0.002
+  mask_max_num_objects: null
+  mask_keep_ids: null
+
   # SAM backend: stub / real / auto. 默认 stub 不需要真实 SAM3 依赖。
   sam_backend: stub
   sam3_checkpoint: null

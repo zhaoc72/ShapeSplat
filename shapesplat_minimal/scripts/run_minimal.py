@@ -25,17 +25,27 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--config", required=True)
     parser.add_argument("--out", required=True)
     parser.add_argument("--input", default=None)
+    parser.add_argument("--mask", default=None, help="可选 file mask 路径；提供后启用 same-mask file 模式。")
     parser.add_argument("--eval", action="store_true")
     return parser.parse_args()
 
 
-def run_pipeline(config_path: str | Path, out: str | Path, input_path: str | Path | None = None, do_eval: bool = False) -> Path:
+def run_pipeline(
+    config_path: str | Path,
+    out: str | Path,
+    input_path: str | Path | None = None,
+    do_eval: bool = False,
+    mask_path: str | Path | None = None,
+) -> Path:
     """运行单图 minimal pipeline。
 
     输入优先级保持不变：CLI --input > cfg["image"]["input_path"] > synthetic image。
     实际单图训练/保存逻辑复用 experiments.single_image，避免 batch runner 和单图脚本重复。
     """
     cfg = load_config(config_path)
+    if mask_path is not None:
+        cfg["frontend"]["mask_source"] = "file"
+        cfg["frontend"]["mask_path"] = str(mask_path)
     seed_everything(int(cfg["seed"]))
     out_dir = Path(out)
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -47,6 +57,7 @@ def run_pipeline(config_path: str | Path, out: str | Path, input_path: str | Pat
     else:
         print("No input image provided. Using synthetic image.")
         image = make_synthetic_image(int(cfg["image"]["size"]))
+    print(f"Mask source: {cfg['frontend'].get('mask_source', 'sam')}")
 
     metrics = run_single_image_experiment(
         image=image,
@@ -65,7 +76,7 @@ def run_pipeline(config_path: str | Path, out: str | Path, input_path: str | Pat
 
 def main() -> None:
     args = parse_args()
-    run_pipeline(args.config, args.out, args.input, do_eval=args.eval)
+    run_pipeline(args.config, args.out, args.input, do_eval=args.eval, mask_path=args.mask)
 
 
 if __name__ == "__main__":

@@ -48,6 +48,7 @@ def run_batch_experiment(
                 cfg,
                 image_out,
                 image_id=image_id,
+                record=item.get("record"),
                 save_visuals=save_visuals,
                 save_checkpoint=save_checkpoint,
                 eval_metrics=eval_metrics,

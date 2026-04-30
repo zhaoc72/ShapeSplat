@@ -27,11 +27,14 @@ def main() -> None:
     parser.add_argument("--out", default="outputs/dataset_run")
     parser.add_argument("--max-images", type=int, default=None)
     parser.add_argument("--skip-existing", action="store_true")
+    parser.add_argument("--mask-source", default=None, help="覆盖 frontend.mask_source: sam/file/auto")
     parser.add_argument("--no-visuals", action="store_true")
     parser.add_argument("--save-checkpoint", action="store_true")
     args = parser.parse_args()
 
     cfg = load_config(args.config)
+    if args.mask_source is not None:
+        cfg["frontend"]["mask_source"] = args.mask_source
     seed_everything(int(cfg["seed"]))
     dataset = build_dataset_from_manifest(args.manifest, image_size=int(cfg["image"]["size"]))
     rows = run_batch_experiment(
