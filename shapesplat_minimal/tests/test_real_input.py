@@ -20,7 +20,7 @@ from shapesplat.data.image_io import load_image
 from shapesplat.frontend.pipeline import build_frontend
 from shapesplat.gaussian.initialization import initialize_scene
 from shapesplat.optimization.losses import compute_losses
-from shapesplat.renderer.soft_renderer import SoftGaussianRenderer
+from shapesplat.renderer.backend import build_renderer
 
 
 def _cfg(size: int = 64):
@@ -74,7 +74,7 @@ def test_real_input_one_step(tmp_path):
     image = load_image(path, size=64)
     front = build_frontend(image, cfg)
     scene = initialize_scene(front, cfg)
-    renderer = SoftGaussianRenderer(front.camera)
+    renderer = build_renderer(front.camera, cfg)
     render = renderer(scene)
     loss, _ = compute_losses(scene, renderer, render, front, cfg, stage="visible")
     loss.backward()

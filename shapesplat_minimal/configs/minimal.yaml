@@ -98,9 +98,22 @@ shape_bank:
   descriptor_seed: 123
 
 renderer:
+  # soft / real / auto。默认 soft 使用最小 PyTorch renderer。
+  backend: soft
+  # 真实 CUDA renderer 的 module/class 动态导入路径；minimal 版本默认不填写。
+  real_renderer_module: null
+  real_renderer_class: null
+  # auto 模式下真实 renderer 不可用时 fallback 到 soft renderer。
+  fallback_to_soft: true
   beta_depth: 1.5
   min_sigma_px: 1.0
   max_sigma_px: 4.0
+  # 当前 minimal 使用 visibility_weighted contribution；真实 renderer 应输出 transmittance-weighted maps。
+  contribution_mode: visibility_weighted
+  ownership_eps: 1.0e-6
+  # per-object contribution maps 是本方法核心，真实 renderer 不能省略。
+  render_object_contributions: true
+  render_depth: true
 
 training:
   lr: 0.025

@@ -17,7 +17,7 @@ from shapesplat.data.synthetic import make_synthetic_image
 from shapesplat.frontend.pipeline import build_frontend
 from shapesplat.gaussian.initialization import initialize_scene
 from shapesplat.optimization.losses import compute_losses
-from shapesplat.renderer.soft_renderer import SoftGaussianRenderer
+from shapesplat.renderer.backend import build_renderer
 from shapesplat.utils.config_override import apply_overrides, load_ablation_file
 
 
@@ -48,7 +48,7 @@ def test_losses_respect_ablation_switches():
     cfg["device"] = "cpu"
     front = build_frontend(make_synthetic_image(32), cfg)
     scene = initialize_scene(front, cfg)
-    renderer = SoftGaussianRenderer(front.camera)
+    renderer = build_renderer(front.camera, cfg)
     render = renderer(scene)
     _, terms = compute_losses(scene, renderer, render, front, cfg, stage="joint")
     assert abs(terms["hidden_prior"]) < 1e-8

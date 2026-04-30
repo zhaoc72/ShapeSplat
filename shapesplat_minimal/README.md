@@ -305,3 +305,48 @@ python scripts/run_minimal.py --config configs/file_shape_bank.yaml --input exam
 `FileShapeBank` 目前支持 `.npz` / `.npy` point cloud。`.npz` 至少需要包含 `points [P,3]`，可选包含 `descriptor [D]`、`descriptors [V,D]` 和 `category`。如果没有 descriptor，当前 minimal 版本可以生成 deterministic random descriptor，后续应替换为真实 DINOv3 多视角 shape descriptor 预计算。
 
 正式论文实验时，shape bank 必须与测试实例 train/test instance-disjoint，避免检索泄漏。hidden support prior 是 soft prior，不是 hard template fitting。
+
+## Renderer Backend / 渲染器后端
+
+默认仍然使用 `SoftGaussianRenderer`：
+
+```yaml
+renderer:
+  backend: soft
+```
+
+检查 soft renderer contract：
+
+```bash
+python scripts/check_renderer_backend.py --config configs/minimal.yaml --backend soft --out outputs/check_renderer_soft
+```
+
+真实 CUDA 3DGS renderer 预留接口：
+
+```yaml
+renderer:
+  backend: real
+  real_renderer_module: shapesplat.renderer.real_3dgs_renderer
+  real_renderer_class: RealGaussianRenderer
+```
+
+也可以使用 auto fallback：
+
+```yaml
+renderer:
+  backend: auto
+  fallback_to_soft: true
+```
+
+如果真实 renderer 不可用，auto 模式会 fallback 到 soft renderer。真实 renderer 必须返回统一的 `RenderOutput`：
+
+```text
+rgb [3,H,W]
+alpha [H,W]
+depth [H,W]
+contributions [N,H,W]
+ownership [N,H,W]
+bg_ownership [H,W]
+```
+
+`contributions` 和 `ownership` 是 scene-coupled object ownership optimization 的核心。后续真实 CUDA 3DGS renderer 必须支持 per-object contribution maps，不能只输出 RGB。

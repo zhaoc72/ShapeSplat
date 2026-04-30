@@ -17,8 +17,8 @@ from shapesplat.config import DEFAULT_CONFIG, merge_config
 from shapesplat.data.synthetic import make_synthetic_image
 from shapesplat.frontend.pipeline import build_frontend
 from shapesplat.gaussian.initialization import initialize_scene
-from shapesplat.renderer.soft_renderer import SoftGaussianRenderer
 from shapesplat.optimization.losses import compute_losses
+from shapesplat.renderer.backend import build_renderer
 from shapesplat.shape_prior.file_shape_bank import FileShapeBank
 from shapesplat.shape_prior.retrieval import retrieve_shapes
 from shapesplat.shape_prior.shape_bank_backend import build_shape_bank
@@ -103,7 +103,7 @@ def test_run_with_file_shape_bank():
     image = make_synthetic_image(32)
     front = build_frontend(image, cfg)
     scene = initialize_scene(front, cfg)
-    renderer = SoftGaussianRenderer(front.camera)
+    renderer = build_renderer(front.camera, cfg)
     render = renderer(scene)
     loss, terms = compute_losses(scene, renderer, render, front, cfg, stage="visible")
     assert torch.isfinite(loss)

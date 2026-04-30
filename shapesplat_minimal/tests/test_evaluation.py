@@ -15,7 +15,7 @@ from shapesplat.evaluation.edit_metrics import compute_edit_metrics
 from shapesplat.evaluation.metrics import compute_basic_metrics
 from shapesplat.frontend.pipeline import build_frontend
 from shapesplat.gaussian.initialization import initialize_scene
-from shapesplat.renderer.soft_renderer import SoftGaussianRenderer
+from shapesplat.renderer.backend import build_renderer
 
 
 def _cfg(size: int = 32):
@@ -28,12 +28,7 @@ def _mini_pipeline():
     cfg = _cfg()
     front = build_frontend(make_synthetic_image(int(cfg["image"]["size"])), cfg)
     scene = initialize_scene(front, cfg)
-    renderer = SoftGaussianRenderer(
-        front.camera,
-        beta_depth=cfg["renderer"]["beta_depth"],
-        min_sigma_px=cfg["renderer"]["min_sigma_px"],
-        max_sigma_px=cfg["renderer"]["max_sigma_px"],
-    )
+    renderer = build_renderer(front.camera, cfg)
     render = renderer(scene)
     return cfg, front, scene, renderer, render
 

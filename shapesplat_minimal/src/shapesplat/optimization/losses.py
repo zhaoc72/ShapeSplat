@@ -8,7 +8,7 @@ import torch.nn.functional as F
 from shapesplat.frontend.pipeline import FrontEndOutput
 from shapesplat.gaussian.scene import ObjectGaussianScene
 from shapesplat.geometry.masks import union_mask
-from shapesplat.renderer.soft_renderer import RenderOutput, SoftGaussianRenderer
+from shapesplat.renderer.types import RenderOutput
 
 
 def _zero(device: torch.device) -> torch.Tensor:
@@ -17,7 +17,7 @@ def _zero(device: torch.device) -> torch.Tensor:
 
 def compute_losses(
     scene: ObjectGaussianScene,
-    renderer: SoftGaussianRenderer,
+    renderer,
     render: RenderOutput,
     front: FrontEndOutput,
     cfg: Dict[str, Any],

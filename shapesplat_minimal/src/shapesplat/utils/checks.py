@@ -12,7 +12,7 @@ from shapesplat.data.synthetic import make_synthetic_image
 from shapesplat.frontend.pipeline import build_frontend
 from shapesplat.gaussian.initialization import initialize_scene
 from shapesplat.optimization.losses import compute_losses
-from shapesplat.renderer.soft_renderer import SoftGaussianRenderer
+from shapesplat.renderer.backend import build_renderer
 
 
 def _require_file(path: str | Path, kind: str) -> Path:
@@ -116,14 +116,12 @@ def check_renderer_shapes(cfg: dict) -> None:
     image = make_synthetic_image(int(cfg["image"]["size"]))
     front = build_frontend(image, cfg)
     scene = initialize_scene(front, cfg)
-    renderer = SoftGaussianRenderer(
-        front.camera,
-        beta_depth=cfg["renderer"]["beta_depth"],
-        min_sigma_px=cfg["renderer"]["min_sigma_px"],
-        max_sigma_px=cfg["renderer"]["max_sigma_px"],
-    )
+    renderer = build_renderer(front.camera, cfg)
     out = renderer(scene)
 
+    ownership_sum = out.bg_ownership + out.ownership.sum(dim=0)
+    print(f"renderer backend: {cfg.get('renderer', {}).get('backend', 'soft')}")
+    print(f"renderer class: {renderer.__class__.__name__}")
     print(f"rgb shape: {tuple(out.rgb.shape)}")
     print(f"alpha shape: {tuple(out.alpha.shape)}")
     print(f"depth shape: {tuple(out.depth.shape)}")
@@ -132,6 +130,12 @@ def check_renderer_shapes(cfg: dict) -> None:
     print(f"bg_ownership shape: {tuple(out.bg_ownership.shape)}")
     print(f"number of masks: {front.masks.shape[0]}")
     print(f"number of objects: {len(scene.objects)}")
+    print(
+        "ownership sum min/max/mean: "
+        f"{float(ownership_sum.min().detach().cpu()):.6f}/"
+        f"{float(ownership_sum.max().detach().cpu()):.6f}/"
+        f"{float(ownership_sum.mean().detach().cpu()):.6f}"
+    )
 
     assert out.rgb.ndim == 3
     assert out.rgb.shape[0] == 3
@@ -143,6 +147,8 @@ def check_renderer_shapes(cfg: dict) -> None:
     assert out.ownership.shape[0] == front.masks.shape[0]
     assert out.alpha.shape == front.masks.shape[-2:]
     assert out.depth.shape == front.masks.shape[-2:]
+    assert torch.isfinite(ownership_sum).all()
+    assert float((ownership_sum - 1.0).abs().mean().detach().cpu()) < 1e-3
     print("renderer shape check ok")
 
 
@@ -154,12 +160,7 @@ def check_backward(cfg: dict, stage: str = "visible") -> None:
     image = make_synthetic_image(int(cfg["image"]["size"]))
     front = build_frontend(image, cfg)
     scene = initialize_scene(front, cfg)
-    renderer = SoftGaussianRenderer(
-        front.camera,
-        beta_depth=cfg["renderer"]["beta_depth"],
-        min_sigma_px=cfg["renderer"]["min_sigma_px"],
-        max_sigma_px=cfg["renderer"]["max_sigma_px"],
-    )
+    renderer = build_renderer(front.camera, cfg)
     render = renderer(scene)
     loss, terms = compute_losses(scene, renderer, render, front, cfg, stage=stage)
     loss.backward()

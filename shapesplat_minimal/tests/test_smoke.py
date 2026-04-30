@@ -16,7 +16,7 @@ from shapesplat.data.synthetic import make_synthetic_image
 from shapesplat.frontend.pipeline import build_frontend
 from shapesplat.gaussian.initialization import initialize_scene
 from shapesplat.optimization.losses import compute_losses
-from shapesplat.renderer.soft_renderer import SoftGaussianRenderer
+from shapesplat.renderer.backend import build_renderer
 
 
 def _cfg():
@@ -55,7 +55,7 @@ def test_renderer():
     cfg = _cfg()
     front = build_frontend(make_synthetic_image(32), cfg)
     scene = initialize_scene(front, cfg)
-    renderer = SoftGaussianRenderer(front.camera)
+    renderer = build_renderer(front.camera, cfg)
     out = renderer(scene)
     assert out.rgb.shape == (3, 32, 32)
     assert out.alpha.shape == (32, 32)
@@ -69,7 +69,7 @@ def test_one_train_step():
     cfg = _cfg()
     front = build_frontend(make_synthetic_image(32), cfg)
     scene = initialize_scene(front, cfg)
-    renderer = SoftGaussianRenderer(front.camera)
+    renderer = build_renderer(front.camera, cfg)
     render = renderer(scene)
     loss, terms = compute_losses(scene, renderer, render, front, cfg, stage="visible")
     loss.backward()

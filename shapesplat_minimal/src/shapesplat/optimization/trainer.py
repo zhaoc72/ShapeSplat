@@ -9,7 +9,8 @@ from tqdm import tqdm
 
 from shapesplat.frontend.pipeline import FrontEndOutput
 from shapesplat.gaussian.initialization import initialize_scene
-from shapesplat.renderer.soft_renderer import SoftGaussianRenderer, RenderOutput
+from shapesplat.renderer.backend import build_renderer
+from shapesplat.renderer.types import RenderOutput
 from .losses import compute_losses
 from .edit_ops import edit_consistency_loss
 
@@ -25,12 +26,7 @@ class Trainer:
         self.front = front
         self.cfg = cfg
         self.scene = initialize_scene(front, cfg)
-        self.renderer = SoftGaussianRenderer(
-            front.camera,
-            beta_depth=cfg["renderer"]["beta_depth"],
-            min_sigma_px=cfg["renderer"]["min_sigma_px"],
-            max_sigma_px=cfg["renderer"]["max_sigma_px"],
-        )
+        self.renderer = build_renderer(front.camera, cfg)
         self.optim = torch.optim.Adam(self.scene.parameters(), lr=cfg["training"]["lr"])
         self.loss_log: List[Dict[str, float | str | int]] = []
         self.global_step = 0

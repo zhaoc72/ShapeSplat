@@ -9,7 +9,7 @@ import matplotlib.pyplot as plt
 import torch
 
 from shapesplat.data.image_io import save_tensor_image
-from shapesplat.renderer.soft_renderer import RenderOutput
+from shapesplat.renderer.types import RenderOutput
 
 
 PALETTE = torch.tensor(

@@ -7,7 +7,7 @@ import torch
 from shapesplat.frontend.pipeline import FrontEndOutput
 from shapesplat.gaussian.scene import ObjectGaussianScene
 from shapesplat.geometry.masks import dilate_mask
-from shapesplat.renderer.soft_renderer import RenderOutput, SoftGaussianRenderer
+from shapesplat.renderer.types import RenderOutput
 
 
 def edited_scene(scene: ObjectGaussianScene, object_id: int, op: str) -> ObjectGaussianScene:
@@ -32,7 +32,7 @@ def edited_scene(scene: ObjectGaussianScene, object_id: int, op: str) -> ObjectG
 
 def edit_consistency_loss(
     scene: ObjectGaussianScene,
-    renderer: SoftGaussianRenderer,
+    renderer,
     front: FrontEndOutput,
     base_render: RenderOutput,
     cfg,
