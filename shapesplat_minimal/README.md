@@ -479,3 +479,35 @@ outputs/comparison_run/qualitative_index.md
 ```
 
 当前 dummy baselines 只是协议测试，不是论文正式 baseline。正式 baseline 后续只需要按照 baseline output protocol 输出 `render` / `alpha` / `ownership`，即可被 comparison runner 统一评估。
+
+## Reporting and Diagnostics / 实验报告与诊断
+
+Reporting 工具用于把 comparison / ablation / dataset / baseline 的零散 JSON/CSV 输出整理成实验报告、论文表格草稿和 failure diagnostics。它不是新的算法模块。
+
+先运行 comparison：
+```bash
+python scripts/run_comparison.py --config configs/comparison_minimal.yaml --manifest examples/example_dataset/manifest.csv --out outputs/comparison_run --max-images 3
+```
+
+生成报告：
+```bash
+python scripts/generate_report.py --root outputs/comparison_run --out outputs/comparison_run/report --title "ShapeSplat++ Comparison Report"
+```
+
+生成 LaTeX 表格：
+```bash
+python scripts/make_latex_table.py --input outputs/comparison_run/per_method_summary.json --out outputs/comparison_run/report/tables/comparison_table.tex --caption "Comparison on the same-mask setting." --label tab:same_mask_comparison --kind comparison
+```
+
+诊断 metrics：
+```bash
+python scripts/diagnose_metrics.py --metrics outputs/comparison_run/per_image_comparison.json --out outputs/comparison_run/report/diagnostics --metric AttrAcc --top-k 5
+```
+
+主要输出：
+- `report.md`：实验报告；
+- `tables/*.tex`：论文表格草稿；
+- `diagnostics/failure_cases.json`：失败案例；
+- `qualitative/qualitative_index.md`：定性结果索引。
+
+这些工具用于整理结果和发现 failure modes；正式论文表格仍需要人工检查和排版。

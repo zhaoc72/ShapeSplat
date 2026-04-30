@@ -1,0 +1,32 @@
+reporting:
+  preferred_comparison_columns:
+    - method
+    - num_success
+    - num_failed
+    - AttrAcc_mean
+    - AttrPurity_mean_mean
+    - Leakage_mean
+    - InstIoU_mean_mean
+    - IsoIoU_mean_mean
+    - CollateralL1_mean
+    - EditLocality_mean
+    - DeletionResidual_mean
+
+  preferred_ablation_columns:
+    - name
+    - AttrAcc
+    - AttrPurity_mean
+    - Leakage
+    - InstIoU_mean
+    - IsoIoU_mean
+    - CollateralL1
+    - EditLocality
+    - DeletionResidual
+
+  failure_thresholds:
+    AttrAcc: 0.5
+    Leakage: 0.2
+    InstIoU_mean: 0.3
+    EditLocality: 0.5
+    DeletionResidual: 0.3
+
