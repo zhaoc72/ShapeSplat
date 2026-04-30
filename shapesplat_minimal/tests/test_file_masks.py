@@ -10,13 +10,11 @@ from PIL import Image
 
 ROOT = Path(__file__).resolve().parents[1]
 SRC = ROOT / "src"
-SCRIPTS = ROOT / "scripts"
-for p in (SRC, SCRIPTS):
-    if str(p) not in sys.path:
-        sys.path.insert(0, str(p))
+if str(SRC) not in sys.path:
+    sys.path.insert(0, str(SRC))
 
-from create_example_dataset import create_example_dataset
 from shapesplat.config import DEFAULT_CONFIG, merge_config
+from shapesplat.datasets.example_dataset import create_example_dataset
 from shapesplat.datasets.image_dataset import build_dataset_from_manifest
 from shapesplat.datasets.manifest import load_manifest
 from shapesplat.experiments.batch_runner import run_batch_experiment

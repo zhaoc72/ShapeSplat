@@ -421,3 +421,35 @@ python scripts/run_dataset.py --config configs/same_mask.yaml --manifest example
 - RGB instance PNG
 
 `frontend.mask_source` 控制 mask 从哪里来：`sam` 使用现有 SAM backend，`file` 必须读取给定 mask，`auto` 在存在 mask 文件时用 file，否则回退到 SAM。正式论文主实验建议默认使用 same-mask protocol。
+
+## Baseline Protocol / 基线方法输入输出协议
+
+baseline protocol 用于 same-mask setting：所有方法共享同一张 image 和同一组 retained visible masks，从而公平比较 reconstruction、ownership 和 editing，而不是比较 proposal 质量。
+
+导出单图 baseline inputs：
+```bash
+python scripts/export_baseline_inputs.py --config configs/same_mask.yaml --input examples/example_dataset/images/example_000.png --mask examples/example_dataset/masks/example_000.npy --out outputs/baseline_inputs/example_000 --image-id example_000
+```
+
+运行 dummy baselines：
+```bash
+python scripts/run_dummy_baselines.py --config configs/same_mask.yaml --input examples/example_dataset/images/example_000.png --mask examples/example_dataset/masks/example_000.npy --out outputs/dummy_baselines/example_000 --image-id example_000
+```
+
+批量运行：
+```bash
+python scripts/run_baseline_dataset.py --config configs/baseline_protocol.yaml --manifest examples/example_dataset/manifest.csv --out outputs/baseline_dataset --max-images 3 --run-dummy
+```
+
+打印表格：
+```bash
+python scripts/print_baseline_table.py --summary outputs/baseline_dataset/baseline_summary.json
+```
+
+真实 baseline 后续只要按协议输出以下文件，就可以被统一评估：
+- `render.png`
+- `alpha.png`
+- `ownership.npy` 或 `object_i_alpha.png`
+- `metrics.json` 可选
+
+当前 `identity_mask`、`independent_blob`、`scene_union` 都只是 protocol smoke-test dummy baselines，不是论文正式对比方法。正式 SPAR3D / SF3D / TRELLIS / Hunyuan3D / VGGT / DUSt3R / AnySplat 接入将在后续版本实现。

@@ -1,0 +1,32 @@
+# Baseline protocol smoke-test 配置。
+# 该配置默认使用 same-mask file masks：所有 baseline 共享 image 和 retained visible masks。
+seed: 7
+device: auto
+
+image:
+  size: 64
+  input_path: null
+
+frontend:
+  mask_source: file
+  mask_path: null
+  mask_dir: null
+  mask_format: auto
+  mask_instance_mode: auto
+  mask_resize_mode: nearest
+  mask_min_area_ratio: 0.002
+  mask_max_num_objects: null
+  mask_keep_ids: null
+  sam_backend: stub
+  dino_backend: stub
+  depth_backend: stub
+
+baseline:
+  crop_padding: 8
+  export_rgba: true
+  save_ownership_npy: true
+  dummy_methods:
+    - identity_mask
+    - independent_blob
+    - scene_union
+

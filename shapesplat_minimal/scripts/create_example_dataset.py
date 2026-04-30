@@ -1,131 +1,34 @@
 from __future__ import annotations
 
 import argparse
-import csv
+import os
+import sys
 from pathlib import Path
 
-import numpy as np
-from PIL import Image, ImageDraw, ImageFilter
+os.environ.setdefault("KMP_DUPLICATE_LIB_OK", "TRUE")
 
+ROOT = Path(__file__).resolve().parents[1]
+SRC = ROOT / "src"
+if str(SRC) not in sys.path:
+    sys.path.insert(0, str(SRC))
 
-PALETTE = [(220, 70, 55), (55, 130, 225), (55, 175, 95), (245, 190, 45)]
-
-
-def _shape_specs(size: int, idx: int) -> list[tuple[str, object]]:
-    s = int(size)
-    shift = (idx * 7) % max(1, s // 5)
-    specs: list[tuple[str, object]] = [
-        ("round_rect", (int(0.08 * s) + shift, int(0.16 * s), int(0.40 * s) + shift, int(0.50 * s))),
-        ("ellipse", (int(0.42 * s), int(0.12 * s) + shift // 2, int(0.82 * s), int(0.52 * s) + shift // 2)),
-        (
-            "polygon",
-            [
-                (int(0.20 * s), int(0.78 * s)),
-                (int(0.48 * s) + shift // 3, int(0.45 * s)),
-                (int(0.80 * s), int(0.84 * s)),
-                (int(0.42 * s), int(0.94 * s)),
-            ],
-        ),
-        ("ellipse", (int(0.36 * s), int(0.42 * s), int(0.64 * s), int(0.70 * s))),
-    ]
-    return specs[: 2 + (idx % 3)]
-
-
-def _draw_one_mask(size: int, spec: tuple[str, object]) -> Image.Image:
-    mask = Image.new("L", (size, size), 0)
-    draw = ImageDraw.Draw(mask)
-    kind, geom = spec
-    if kind == "round_rect":
-        draw.rounded_rectangle(geom, radius=max(4, size // 18), fill=1)
-    elif kind == "ellipse":
-        draw.ellipse(geom, fill=1)
-    elif kind == "polygon":
-        draw.polygon(geom, fill=1)
-    return mask
-
-
-def _draw_example(image_path: Path, mask_path: Path, mask_png_path: Path, size: int, idx: int) -> None:
-    """绘制图像和遮挡后的 visible instance masks。
-
-    mask 是 same-mask protocol 的 toy retained visible masks，不是 amodal masks。
-    """
-    s = int(size)
-    img = Image.new("RGB", (s, s), (238, 239, 236))
-    bg = ImageDraw.Draw(img, "RGBA")
-    for y in range(0, s, 10):
-        shade = 232 + ((y + idx) // 10) % 6
-        bg.line((0, y, s, y), fill=(shade, shade, shade, 45), width=1)
-
-    specs = _shape_specs(s, idx)
-    raw_masks = [np.array(_draw_one_mask(s, spec), dtype=bool) for spec in specs]
-    visible_masks = []
-    occupied_later = np.zeros((s, s), dtype=bool)
-    # 按绘制顺序叠加，后画的物体遮挡先画的物体，因此从后往前计算 visible 区域。
-    for raw in reversed(raw_masks):
-        visible = raw & (~occupied_later)
-        visible_masks.append(visible)
-        occupied_later |= raw
-    visible_masks = list(reversed(visible_masks))
-
-    for i, (spec, visible) in enumerate(zip(specs, visible_masks)):
-        overlay = Image.new("RGBA", (s, s), (*PALETTE[i % len(PALETTE)], 235))
-        alpha = Image.fromarray((visible.astype(np.uint8) * 255), mode="L")
-        img.paste(overlay, (0, 0), alpha)
-
-    img = img.filter(ImageFilter.SMOOTH_MORE)
-    img.save(image_path)
-
-    stack = np.stack([m.astype(np.uint8) for m in visible_masks], axis=0)
-    np.save(mask_path, stack)
-    label = np.zeros((s, s), dtype=np.uint8)
-    for i, m in enumerate(visible_masks, start=1):
-        label[m] = i
-    Image.fromarray(label, mode="L").save(mask_png_path)
-
-
-def create_example_dataset(out: str | Path, num_images: int = 4, size: int = 128) -> Path:
-    """生成一个带 image/mask/manifest 的 toy same-mask dataset。"""
-    out_dir = Path(out)
-    image_dir = out_dir / "images"
-    mask_dir = out_dir / "masks"
-    mask_png_dir = out_dir / "mask_png"
-    image_dir.mkdir(parents=True, exist_ok=True)
-    mask_dir.mkdir(parents=True, exist_ok=True)
-    mask_png_dir.mkdir(parents=True, exist_ok=True)
-
-    rows = []
-    for i in range(int(num_images)):
-        image_id = f"example_{i:03d}"
-        image_path = image_dir / f"{image_id}.png"
-        mask_path = mask_dir / f"{image_id}.npy"
-        mask_png_path = mask_png_dir / f"{image_id}.png"
-        _draw_example(image_path, mask_path, mask_png_path, int(size), i)
-        rows.append(
-            {
-                "image_id": image_id,
-                "image_path": f"images/{image_id}.png",
-                "mask_path": f"masks/{image_id}.npy",
-                "split": "test",
-                "category": "toy",
-            }
-        )
-
-    manifest = out_dir / "manifest.csv"
-    with open(manifest, "w", encoding="utf-8", newline="") as f:
-        writer = csv.DictWriter(f, fieldnames=["image_id", "image_path", "mask_path", "split", "category"])
-        writer.writeheader()
-        writer.writerows(rows)
-    print(f"Example dataset saved to: {out_dir.resolve()}")
-    return out_dir
+from shapesplat.datasets.example_dataset import create_example_dataset
 
 
 def main() -> None:
+    """CLI 入口。
+
+    可复用逻辑位于 `shapesplat.datasets.example_dataset`，脚本只负责参数解析，
+    避免 tests 直接 import scripts 目录。
+    """
+
     parser = argparse.ArgumentParser(description="Create a tiny same-mask example dataset.")
     parser.add_argument("--out", default="examples/example_dataset")
     parser.add_argument("--num-images", type=int, default=4)
     parser.add_argument("--size", type=int, default=128)
     args = parser.parse_args()
-    create_example_dataset(args.out, args.num_images, args.size)
+    manifest = create_example_dataset(args.out, args.num_images, args.size)
+    print(f"Example dataset saved to: {manifest.parent.resolve()}")
 
 
 if __name__ == "__main__":
