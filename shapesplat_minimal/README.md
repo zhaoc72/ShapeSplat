@@ -453,3 +453,29 @@ python scripts/print_baseline_table.py --summary outputs/baseline_dataset/baseli
 - `metrics.json` 可选
 
 当前 `identity_mask`、`independent_blob`、`scene_union` 都只是 protocol smoke-test dummy baselines，不是论文正式对比方法。正式 SPAR3D / SF3D / TRELLIS / Hunyuan3D / VGGT / DUSt3R / AnySplat 接入将在后续版本实现。
+
+## Comparison Runner / 统一对比实验
+
+comparison runner 在 same-mask dataset 上同时运行 Ours 和 dummy baselines，并保存 per-image comparison、per-method summary 和定性网格图。
+
+创建 same-mask example dataset：
+```bash
+python scripts/create_example_dataset.py --out examples/example_dataset --num-images 4 --size 128
+```
+
+运行 Ours + dummy baselines comparison：
+```bash
+python scripts/run_comparison.py --config configs/comparison_minimal.yaml --manifest examples/example_dataset/manifest.csv --out outputs/comparison_run --max-images 3
+```
+
+打印表格：
+```bash
+python scripts/print_comparison_table.py --summary outputs/comparison_run/per_method_summary.json
+```
+
+查看定性结果：
+```text
+outputs/comparison_run/qualitative_index.md
+```
+
+当前 dummy baselines 只是协议测试，不是论文正式 baseline。正式 baseline 后续只需要按照 baseline output protocol 输出 `render` / `alpha` / `ownership`，即可被 comparison runner 统一评估。

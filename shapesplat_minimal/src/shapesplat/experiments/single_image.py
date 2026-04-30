@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import numpy as np
 import torch
 
 from shapesplat.data.image_io import save_tensor_image
@@ -49,6 +50,8 @@ def run_single_image_experiment(
 
     if save_visuals:
         save_render_outputs(render, out_path)
+    # 保存原始 ownership tensor，便于 baseline protocol / comparison runner 统一读取。
+    np.save(out_path / "ownership.npy", render.ownership.detach().cpu().float().numpy().astype("float32"))
     save_json(loss_log, out_path / "loss_log.json")
     if save_checkpoint:
         trainer.save_checkpoint(out_path / "checkpoint_minimal.pt")
