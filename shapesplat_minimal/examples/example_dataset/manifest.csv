@@ -1,0 +1,5 @@
+image_id,image_path,split,category
+example_000,images/example_000.png,test,toy
+example_001,images/example_001.png,test,toy
+example_002,images/example_002.png,test,toy
+example_003,images/example_003.png,test,toy

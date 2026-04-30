@@ -350,3 +350,42 @@ bg_ownership [H,W]
 ```
 
 `contributions` 和 `ownership` 是 scene-coupled object ownership optimization 的核心。后续真实 CUDA 3DGS renderer 必须支持 per-object contribution maps，不能只输出 RGB。
+
+## Dataset / Batch Experiment Runner
+
+创建 example dataset：
+
+```bash
+python scripts/create_example_dataset.py --out examples/example_dataset --num-images 4 --size 128
+```
+
+运行 batch experiment：
+
+```bash
+python scripts/run_dataset.py --config configs/dataset_minimal.yaml --manifest examples/example_dataset/manifest.csv --out outputs/dataset_run --max-images 3
+```
+
+打印 summary：
+
+```bash
+python scripts/print_metrics_table.py --summary outputs/dataset_run/summary.json
+```
+
+输出结构：
+
+```text
+outputs/dataset_run/
+  image_id/
+    input.png
+    masks.png
+    render_final.png
+    alpha_final.png
+    ownership_argmax.png
+    metrics.json
+  per_image_metrics.json
+  per_image_metrics.csv
+  summary.json
+  summary.csv
+```
+
+当前 batch runner 仍然使用 minimal pipeline，用于验证多图运行、结果保存和 metrics 汇总。正式论文实验后续需要接真实 backend、正式数据集和 baseline。

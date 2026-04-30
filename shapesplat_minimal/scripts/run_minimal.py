@@ -5,8 +5,6 @@ import os
 import sys
 from pathlib import Path
 
-# Windows/Anaconda 环境中 torch 与 matplotlib 可能加载两份 OpenMP runtime。
-# 这里作为最小 demo 的兼容开关；真实实验环境建议从依赖层面统一 OpenMP runtime。
 os.environ.setdefault("KMP_DUPLICATE_LIB_OK", "TRUE")
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -15,32 +13,27 @@ if str(SRC) not in sys.path:
     sys.path.insert(0, str(SRC))
 
 from shapesplat.config import load_config
-from shapesplat.data.image_io import load_image, save_tensor_image
+from shapesplat.data.image_io import load_image
 from shapesplat.data.synthetic import make_synthetic_image
-from shapesplat.evaluation.edit_metrics import compute_edit_metrics
-from shapesplat.evaluation.metrics import compute_basic_metrics
-from shapesplat.evaluation.report import merge_metrics, print_metrics, save_metrics_json
-from shapesplat.frontend.pipeline import build_frontend
-from shapesplat.optimization.trainer import Trainer
-from shapesplat.utils.logging import save_json
+from shapesplat.evaluation.report import print_metrics
+from shapesplat.experiments.single_image import run_single_image_experiment
 from shapesplat.utils.seed import seed_everything
-from shapesplat.utils.visualization import save_input_with_mask_overlay, save_mask_grid, save_render_outputs
 
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Run ShapeSplat++ minimal pipeline.")
-    parser.add_argument("--config", required=True, help="配置文件路径，例如 configs/minimal.yaml")
-    parser.add_argument("--out", required=True, help="输出目录，例如 outputs/minimal")
-    parser.add_argument("--input", default=None, help="可选输入 RGB 图像；为空时使用 config 或 synthetic 图")
-    parser.add_argument("--eval", action="store_true", help="训练完成后计算 minimal evaluation metrics")
+    parser.add_argument("--config", required=True)
+    parser.add_argument("--out", required=True)
+    parser.add_argument("--input", default=None)
+    parser.add_argument("--eval", action="store_true")
     return parser.parse_args()
 
 
 def run_pipeline(config_path: str | Path, out: str | Path, input_path: str | Path | None = None, do_eval: bool = False) -> Path:
-    """运行最小 ShapeSplat++ pipeline。
+    """运行单图 minimal pipeline。
 
-    输入优先级为：CLI --input > cfg['image']['input_path'] > synthetic image。
-    该函数供 run_minimal.py 和 run_real_input_demo.py 复用，避免两套入口逻辑漂移。
+    输入优先级保持不变：CLI --input > cfg["image"]["input_path"] > synthetic image。
+    实际单图训练/保存逻辑复用 experiments.single_image，避免 batch runner 和单图脚本重复。
     """
     cfg = load_config(config_path)
     seed_everything(int(cfg["seed"]))
@@ -54,29 +47,17 @@ def run_pipeline(config_path: str | Path, out: str | Path, input_path: str | Pat
     else:
         print("No input image provided. Using synthetic image.")
         image = make_synthetic_image(int(cfg["image"]["size"]))
-    save_tensor_image(image, out_dir / "input.png")
 
-    # frozen front-end：SAM3 stub -> visible masks；DINOv3 stub -> descriptors；Depth stub -> weak depth。
-    front = build_frontend(image, cfg)
-    if front.masks.shape[0] == 0:
-        raise RuntimeError("Front-end 没有检测到任何 mask；请检查输入图像或 Sam3Stub 前景启发式。")
-    save_mask_grid(front.masks, out_dir / "masks.png")
-    save_input_with_mask_overlay(front.image, front.masks, out_dir / "input_mask_overlay.png")
-
-    # 初始化 visible-hidden Gaussian buffers，并执行分阶段优化。
-    trainer = Trainer(front, cfg)
-    loss_log = trainer.train()
-
-    # 保存最终渲染、日志和 checkpoint。
-    render = trainer.render()
-    save_render_outputs(render, out_dir)
-    save_json(loss_log, out_dir / "loss_log.json")
-    trainer.save_checkpoint(out_dir / "checkpoint_minimal.pt")
+    metrics = run_single_image_experiment(
+        image=image,
+        cfg=cfg,
+        out_dir=out_dir,
+        image_id="minimal",
+        save_visuals=True,
+        save_checkpoint=True,
+        eval_metrics=do_eval,
+    )
     if do_eval:
-        basic = compute_basic_metrics(render, front.masks)
-        edit = compute_edit_metrics(trainer.scene, trainer.renderer, front, render, cfg, object_id=0)
-        metrics = merge_metrics(basic, edit)
-        save_metrics_json(metrics, out_dir / "metrics.json")
         print_metrics(metrics)
     print(f"ShapeSplat++ minimal outputs saved to: {out_dir.resolve()}")
     return out_dir
