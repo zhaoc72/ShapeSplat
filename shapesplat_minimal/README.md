@@ -791,3 +791,51 @@ outputs/paper_debug/
 ```
 
 `debug` is a smoke-test profile, not a formal paper result. Optional geometry metrics run only when GT point clouds are available. The soft renderer is useful for validating the experimental protocol, but it is not a final high-quality CUDA 3DGS renderer.
+
+## Artifact Readiness / 工程验收
+
+v2.3 adds final artifact validation, documentation, command matrix checks, lightweight CI, cleanup helpers, and packaging utilities. These tools do not add algorithms and do not require real model checkpoints.
+
+Run a quick project health check:
+
+```bash
+python scripts/check_project_health.py
+```
+
+Run quick tests:
+
+```bash
+python scripts/run_quick_tests.py
+```
+
+Run the full test suite:
+
+```bash
+python scripts/run_quick_tests.py --full
+```
+
+Run artifact validation from the command matrix:
+
+```bash
+python scripts/validate_artifact.py --matrix configs/command_matrix.yaml --groups quick smoke --out outputs/artifact_validation
+```
+
+Dry-run validation:
+
+```bash
+python scripts/validate_artifact.py --matrix configs/command_matrix.yaml --groups quick smoke --dry-run --out outputs/artifact_validation_dry
+```
+
+Package a lightweight artifact:
+
+```bash
+python scripts/package_artifact.py --out dist/shapesplat_minimal_artifact.zip --include-examples --include-tests --include-docs
+```
+
+Clean generated outputs:
+
+```bash
+python scripts/clean_outputs.py --dry-run
+```
+
+Lightweight CI lives at `.github/workflows/ci.yml` and runs import plus CPU pytest smoke tests. The artifact package excludes `outputs/`, `runs/`, `.git/`, checkpoints, and model weights. Real SAM3 / DINOv3 / renderer checkpoints are intentionally not bundled and must be configured separately.
