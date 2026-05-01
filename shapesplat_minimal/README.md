@@ -839,3 +839,33 @@ python scripts/clean_outputs.py --dry-run
 ```
 
 Lightweight CI lives at `.github/workflows/ci.yml` and runs import plus CPU pytest smoke tests. The artifact package excludes `outputs/`, `runs/`, `.git/`, checkpoints, and model weights. Real SAM3 / DINOv3 / renderer checkpoints are intentionally not bundled and must be configured separately.
+
+## Real Integration Smoke Test / 真实组件本地集成测试
+
+v2.4 adds a local integration smoke layer for optional real SAM3 / DINOv3 / Depth / ShapeBank / Renderer / external baseline components. It does not download models and does not require real checkpoints.
+
+Create a local backend template:
+
+```bash
+python scripts/create_local_backend_template.py --out configs/my_local_backend.yaml
+```
+
+Check backend capability:
+
+```bash
+python scripts/check_backend_capabilities.py --config configs/my_local_backend.yaml --out outputs/backend_capabilities
+```
+
+Run the integration smoke test:
+
+```bash
+python scripts/run_real_integration_smoke.py --config configs/my_local_backend.yaml --input examples/test_image.png --out outputs/real_integration_smoke --save-cache
+```
+
+Then inspect:
+
+```text
+outputs/real_integration_smoke/integration_report.md
+```
+
+If no real models are configured, `auto` mode falls back to stub / soft backends and should still complete. This smoke test validates local integration plumbing; it is not a final paper-quality experiment.

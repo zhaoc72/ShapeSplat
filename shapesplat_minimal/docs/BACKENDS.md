@@ -60,3 +60,38 @@ python scripts/check_real_frontend.py --config configs/local_real_frontend.yaml 
 
 真实 backend fallback 到 stub 是预期行为，除非用户显式要求 real-only。
 
+## Local Real Integration Smoke Test
+
+生成本地 backend 模板：
+
+```bash
+python scripts/create_local_backend_template.py --out configs/my_local_backend.yaml
+```
+
+检查 backend capability：
+
+```bash
+python scripts/check_backend_capabilities.py --config configs/local_backend_template.yaml --out outputs/backend_capabilities
+```
+
+运行真实集成 smoke test：
+
+```bash
+python scripts/run_real_integration_smoke.py --config configs/local_backend_template.yaml --input examples/test_image.png --out outputs/real_integration_smoke --save-cache
+```
+
+填写 `local_backend_template.yaml` 时，常用字段包括：
+
+- `frontend.sam3_checkpoint`
+- `frontend.dino_model_name` / `frontend.dino_checkpoint`
+- `frontend.depth_model_name` / `frontend.depth_checkpoint`
+- `shape_bank.root`
+- `renderer.real_renderer_module`
+- `renderer.real_renderer_class`
+
+Fallback 规则：
+
+- `auto` 会优先尝试真实 backend；
+- 真实 backend 不可用时 fallback 到 `stub` / `soft`；
+- `real` 表示强制真实 backend，失败时会报错；
+- 真实 backend 接入失败不应影响默认 minimal pipeline。
