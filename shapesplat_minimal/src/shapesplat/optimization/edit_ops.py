@@ -1,9 +1,8 @@
 from __future__ import annotations
 
-import copy
-
 import torch
 
+from shapesplat.editing.ops import apply_edit
 from shapesplat.frontend.pipeline import FrontEndOutput
 from shapesplat.gaussian.scene import ObjectGaussianScene
 from shapesplat.geometry.masks import dilate_mask
@@ -15,19 +14,8 @@ def edited_scene(scene: ObjectGaussianScene, object_id: int, op: str) -> ObjectG
 
     最小版本用 deepcopy 实现清晰语义；真实系统可改为更高效的参数视图或 batched edit renderer。
     """
-    sc = copy.deepcopy(scene)
-    for obj in sc.objects:
-        if op == "isolate" and obj.object_id != object_id:
-            obj.opacity_logits.data.fill_(-12.0)
-        if obj.object_id == object_id:
-            if op == "remove":
-                obj.opacity_logits.data.fill_(-12.0)
-            elif op == "translate":
-                obj.means.data[:, 0] += 0.18
-            elif op == "scale":
-                c = obj.means.data.mean(dim=0, keepdim=True)
-                obj.means.data[:] = c + (obj.means.data - c) * 1.15
-    return sc
+    # optimization/edit_ops.py 保留训练 loss 旧接口；实际 buffer 编辑复用 inference editing/ops.py。
+    return apply_edit(scene, {"op": op, "object_id": object_id, "translation": [0.18, 0.0, 0.0], "scale": 1.15})
 
 
 def edit_consistency_loss(

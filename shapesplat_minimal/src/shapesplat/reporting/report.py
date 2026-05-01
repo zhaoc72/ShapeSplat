@@ -18,6 +18,7 @@ from shapesplat.reporting.qualitative import (
 from shapesplat.reporting.tables import (
     ABLATION_COLUMNS,
     COMPARISON_COLUMNS,
+    EDIT_COLUMNS,
     STRESS_COLUMNS,
     flatten_summary,
     make_markdown_table,
@@ -107,10 +108,24 @@ def generate_experiment_report(
         )
         report_lines.extend(["## Stress Benchmark Summary", md, ""])
         manifest["stress_table"] = str(tables_dir / "stress_table.csv")
+    if "edit_summary" in found:
+        rows = _rows_from_output(found["edit_summary"])
+        md = _write_table(
+            rows,
+            EDIT_COLUMNS,
+            tables_dir / "edit_table.csv",
+            tables_dir / "edit_table.tex",
+            "Object editing suite summary.",
+            "tab:editing_summary",
+        )
+        report_lines.extend(["## Editing Summary", md, ""])
+        manifest["edit_table"] = str(tables_dir / "edit_table.csv")
     if "per_image_comparison" in found:
         per_image_rows = _rows_from_output(found["per_image_comparison"])
     elif "stress_per_image" in found:
         per_image_rows = _rows_from_output(found["stress_per_image"])
+    elif "edit_per_image" in found:
+        per_image_rows = _rows_from_output(found["edit_per_image"])
     elif "baseline_summary" in found:
         per_image_rows = _rows_from_output(found["baseline_summary"])
     elif "metrics_files" in found:

@@ -62,6 +62,8 @@ def find_experiment_outputs(root: str | Path) -> dict[str, Path]:
         "dataset_summary": root / "summary.json",
         "stress_subset_summary": root / "stress_subset_summary.json",
         "stress_per_image": root / "stress_per_image.json",
+        "edit_summary": root / "edit_summary.json",
+        "edit_per_image": root / "edit_per_image.json",
         "comparison_csv": root / "comparison.csv",
         "metrics": root / "metrics.json",
     }

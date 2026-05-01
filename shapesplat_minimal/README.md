@@ -593,3 +593,29 @@ python scripts/print_stress_table.py --summary outputs/stress_benchmark/stress_s
 支持 subset：`normal`、`light_occlusion`、`heavy_occlusion`、`same_category`、`contact_heavy`、`truncation`、`scale_variation`、`small_object`、`mixed`。
 
 诊断指标包括 `SwapRateProxy`、`OrderAccProxy`、`OcclusionRecallProxy`、`TruncationStabilityProxy`。这些是 synthetic diagnostic metrics，不是最终真实 3D reconstruction metrics；它们用于调试 visible-hidden split、ownership rendering 和 edit consistency。
+
+## Object Editing Suite / 物体级编辑评估
+
+单图编辑 demo：
+
+```bash
+python scripts/run_edit_demo.py --config configs/editing.yaml --input examples/example_dataset/images/example_000.png --mask examples/example_dataset/masks/example_000.npy --out outputs/edit_demo --object-id 0
+```
+
+打印编辑指标：
+
+```bash
+python scripts/print_edit_table.py --summary outputs/edit_demo/edit_summary.json
+```
+
+批量编辑评估：
+
+```bash
+python scripts/run_edit_dataset.py --config configs/editing.yaml --manifest examples/example_dataset/manifest.csv --out outputs/edit_dataset --max-images 3 --max-objects 2
+```
+
+支持编辑操作：`remove`、`translate`、`scale`、`isolate`、`object_only`。
+
+主要输出包括 `original_render.png`、`edited_render.png`、`diff_heatmap.png`、`edit_region.png`、`non_edit_region.png`、`object_alpha_before.png`、`object_alpha_after.png`、`edit_metrics.json` 和 `edit_summary.json`。
+
+指标说明：`CollateralL1` 衡量非编辑区域 RGB 变化；`AlphaCollateral` 衡量非编辑区域 alpha 变化；`EditLocality` 越高越好；`DeletionResidual` 衡量删除后原物体区域残留；`ObjectSupportIoU` 衡量编辑后 object support 与原 mask 的一致性。这些是 minimal editing diagnostics；正式论文中可以替换 CollateralL1 为 Collateral LPIPS。

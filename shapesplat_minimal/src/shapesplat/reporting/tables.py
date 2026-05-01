@@ -43,6 +43,16 @@ STRESS_COLUMNS = [
     "EditLocality_mean",
 ]
 
+EDIT_COLUMNS = [
+    "op",
+    "num_edits",
+    "CollateralL1_mean",
+    "AlphaCollateral_mean",
+    "EditLocality_mean",
+    "DeletionResidual_mean",
+    "ObjectSupportIoU_mean",
+]
+
 
 def _flatten_nested(prefix: str, value: Any, out: dict) -> None:
     if isinstance(value, dict):
