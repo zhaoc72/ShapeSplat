@@ -35,6 +35,27 @@ def _row(method: str, image_id: str, status: str, output_dir: Path, metrics: dic
     return item
 
 
+def _resolve_external_output_dir(base_dir: str | Path, method: str, image_id: str) -> Path:
+    """按常见 external baseline dataset 输出结构查找某张图的输出目录。
+
+    支持直接传 method 输出目录，也支持传 dataset 根目录：root/image_id/method。
+    找不到时返回原始目录，让后续 loader 给出清晰错误并记录 warning。
+    """
+
+    base = Path(base_dir)
+    candidates = [
+        base,
+        base / image_id / method,
+        base / image_id,
+        base / "per_image" / image_id / "external" / method,
+        base / "per_image" / image_id / method,
+    ]
+    for path in candidates:
+        if path.exists() and ((path / "ownership.npy").exists() or list(path.glob("object_*_alpha.png"))):
+            return path
+    return base
+
+
 def run_comparison_for_image(
     image: torch.Tensor,
     masks: torch.Tensor,
@@ -103,11 +124,12 @@ def run_comparison_for_image(
     for method, directory in (external_baseline_dirs or {}).items():
         method_dir = out_dir / "external" / method
         try:
-            pred = load_baseline_output(directory, method, image_id)
+            resolved_dir = _resolve_external_output_dir(directory, method, image_id)
+            pred = load_baseline_output(resolved_dir, method, image_id)
             metrics = evaluate_baseline_prediction(pred, masks, image=image)
             method_dir.mkdir(parents=True, exist_ok=True)
             save_metrics_json(metrics, method_dir / "metrics.json")
-            rows.append(_row(method, image_id, "success", Path(directory), metrics=metrics))
+            rows.append(_row(method, image_id, "success", resolved_dir, metrics=metrics))
             method_outputs[method] = pred
         except Exception as exc:
             method_dir.mkdir(parents=True, exist_ok=True)
@@ -186,4 +208,3 @@ def run_comparison_dataset(
             rows.append(err)
             print(f"Warning: comparison failed on {image_id}: {exc}")
     return rows
-

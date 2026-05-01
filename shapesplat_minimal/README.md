@@ -511,3 +511,38 @@ python scripts/diagnose_metrics.py --metrics outputs/comparison_run/per_image_co
 - `qualitative/qualitative_index.md`：定性结果索引。
 
 这些工具用于整理结果和发现 failure modes；正式论文表格仍需要人工检查和排版。
+
+## External Baseline Adapter / 外部基线方法适配器
+
+external baseline adapter 是后续接入 SPAR3D / SF3D / TRELLIS / Hunyuan3D / VGGT / DUSt3R / AnySplat 等方法的统一入口。当前版本只提供接口、dummy adapter、command template、输出验证和 dry-run，不接真实 baseline、不下载模型。
+
+列出可用 adapters：
+```bash
+python scripts/list_baseline_adapters.py
+```
+
+验证 baseline output：
+```bash
+python scripts/validate_baseline_output.py --output outputs/dummy_baselines/example_000/identity_mask --num-objects 2 --strict
+```
+
+运行 dummy external adapter：
+```bash
+python scripts/run_external_baseline.py --config configs/same_mask.yaml --external-config configs/external_baselines.yaml --adapter dummy_external --input examples/example_dataset/images/example_000.png --mask examples/example_dataset/masks/example_000.npy --out outputs/external_baseline/example_000/dummy_external --image-id example_000
+```
+
+批量运行 dummy external adapter：
+```bash
+python scripts/run_external_baseline_dataset.py --config configs/same_mask.yaml --external-config configs/external_baselines.yaml --manifest examples/example_dataset/manifest.csv --adapter dummy_external --out outputs/external_baseline_dataset --max-images 3
+```
+
+`command_template` 示例：
+```yaml
+external_baselines:
+  - name: my_method
+    adapter: command_template
+    enabled: true
+    command: "python external_methods/my_method/run.py --image {image} --masks {masks} --out {output_dir}"
+```
+
+真实 baseline 后续只需要写 adapter 或 command template，并输出符合 baseline output protocol 的文件：`render.png`、`alpha.png`、`ownership.npy` 或 `object_i_alpha.png`。
