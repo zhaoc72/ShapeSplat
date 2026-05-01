@@ -664,3 +664,39 @@ python scripts/run_experiment.py --preset debug_all --out outputs/exp_debug_all
 ```
 
 输出包括 `experiment_plan.json`、`command_log.json`、`run_summary.json`、`readiness.json`、`logs/`、`run_info.json` 和 `metrics_summary.json`。orchestrator 只是统一调用已有脚本，不改变算法，用于减少实验命令复杂度。
+## Real Backend and Shape Prior Pack
+
+v2.0 adds utility code for checking optional real frontends, caching frontend outputs, and preparing file shape banks. These tools do not download checkpoints and do not require real SAM3 / DINOv3 / Depth models. The default minimal pipeline still uses stub backends.
+
+Check a frontend backend configuration:
+
+```bash
+python scripts/check_real_frontend.py --config configs/local_real_frontend.yaml --input examples/test_image.png --out outputs/check_real_frontend --save-cache
+```
+
+Cache frontend outputs for a dataset:
+
+```bash
+python scripts/cache_frontend_outputs.py --config configs/local_real_frontend.yaml --manifest examples/example_dataset/manifest.csv --out-cache outputs/frontend_cache --max-images 3
+```
+
+Prepare a descriptor-ready toy shape bank:
+
+```bash
+python scripts/prepare_shape_bank.py --source toy --out outputs/shape_bank_prepared --num-points 512 --descriptor-dim 16 --descriptor-mode point_stats
+```
+
+Check image-to-shape retrieval:
+
+```bash
+python scripts/check_shape_retrieval.py --config configs/real_shape_bank.yaml --input examples/test_image.png --shape-root outputs/shape_bank_prepared --out outputs/check_shape_retrieval
+```
+
+Run through presets:
+
+```bash
+python scripts/run_experiment.py --preset real_backend_check --out outputs/exp_real_backend_check
+python scripts/run_experiment.py --preset shape_prior_check --out outputs/exp_shape_prior_check
+```
+
+Frontend cache files include `masks.npy`, `mask_confidences.npy`, `boxes.npy`, `descriptors.npy`, `depth.npy`, `frontend_meta.json`, and optional `dino_features.pt`. Shape descriptor precompute currently supports `point_stats` and `random`; a future real paper pipeline can replace this with multi-view DINO descriptors.

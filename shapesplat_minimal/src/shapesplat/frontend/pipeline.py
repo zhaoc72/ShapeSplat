@@ -24,7 +24,14 @@ class FrontEndOutput:
     camera: Camera
 
 
-def build_frontend(image: torch.Tensor, cfg: Dict[str, Any], record=None) -> FrontEndOutput:
+def build_frontend(
+    image: torch.Tensor,
+    cfg: Dict[str, Any],
+    record=None,
+    cache_dir=None,
+    use_cache: bool = False,
+    save_cache: bool = False,
+) -> FrontEndOutput:
     """构建 frozen front-end 输出。
 
     SAM/file mask source 负责 where：retained visible instance masks；
@@ -36,6 +43,13 @@ def build_frontend(image: torch.Tensor, cfg: Dict[str, Any], record=None) -> Fro
     """
     device = torch.device(cfg["device"])
     image = image.to(device)
+    if use_cache and cache_dir is not None:
+        from shapesplat.cache.frontend_cache import frontend_cache_exists, load_frontend_output
+
+        # 真实 backend 批量实验时优先读取缓存，避免重复运行 SAM / DINO / Depth。
+        if frontend_cache_exists(cache_dir):
+            return load_frontend_output(cache_dir, image)
+
     mask_set = get_masks_for_image(image, cfg, record=record)
 
     dino = build_dino_backend(cfg)
@@ -53,4 +67,16 @@ def build_frontend(image: torch.Tensor, cfg: Dict[str, Any], record=None) -> Fro
     )
     _, h, w = image.shape
     camera = Camera.canonical(w, h, cfg["camera"]["focal_scale"], device)
-    return FrontEndOutput(image, mask_set.masks, mask_set.confidences, mask_set.boxes, feats, desc, depth, camera)
+    front = FrontEndOutput(image, mask_set.masks, mask_set.confidences, mask_set.boxes, feats, desc, depth, camera)
+    if save_cache and cache_dir is not None:
+        from shapesplat.cache.frontend_cache import save_frontend_output
+
+        image_id = getattr(record, "image_id", None) or "image"
+        save_frontend_output(
+            front,
+            cache_dir,
+            image_id=image_id,
+            save_dino_features=bool(cfg.get("frontend_cache", {}).get("save_dino_features", False)),
+            save_visuals=True,
+        )
+    return front

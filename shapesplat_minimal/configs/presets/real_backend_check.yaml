@@ -1,0 +1,17 @@
+name: real_backend_check
+description: "Check SAM/DINO/Depth frontend backends with auto fallback and optional cache."
+default_out: outputs/experiments/real_backend_check
+steps:
+  - name: check_real_frontend
+    enabled: true
+    command:
+      - python
+      - scripts/check_real_frontend.py
+      - --config
+      - configs/local_real_frontend.yaml
+      - --input
+      - examples/test_image.png
+      - --out
+      - "{out}"
+      - --save-cache
+

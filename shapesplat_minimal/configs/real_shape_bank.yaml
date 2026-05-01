@@ -1,0 +1,34 @@
+# prepared shape bank 测试配置；正式论文中 root 应指向 train/test disjoint 的 shape bank。
+seed: 7
+device: auto
+
+image:
+  size: 64
+
+frontend:
+  mask_source: sam
+  sam_backend: stub
+  dino_backend: stub
+  dino_feature_dim: 16
+  depth_backend: stub
+
+shape_bank:
+  backend: file
+  root: outputs/shape_bank_precomputed
+  descriptor_dim: 16
+  num_points: 512
+  normalize_points: true
+  center_points: true
+  scale_to_unit: true
+  fallback_to_toy: false
+  random_descriptor_if_missing: false
+  descriptor_seed: 123
+
+retrieval:
+  top_k: 3
+  confidence_low: 0.15
+  confidence_high: 0.80
+  support_sigma: 0.18
+  use_multi_view_descriptors: true
+  temperature: 0.07
+
