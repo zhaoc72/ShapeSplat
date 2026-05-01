@@ -1,0 +1,16 @@
+name: minimal
+description: "Run the single-image minimal ShapeSplat++ pipeline."
+default_out: outputs/experiments/minimal
+steps:
+  - name: run_minimal
+    enabled: true
+    command:
+      - python
+      - scripts/run_minimal.py
+      - --config
+      - configs/minimal.yaml
+      - --out
+      - "{out}"
+      - --eval
+      - --no-run-metadata
+

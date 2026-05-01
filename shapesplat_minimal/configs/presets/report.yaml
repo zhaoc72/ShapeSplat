@@ -1,0 +1,8 @@
+name: report
+description: "Generate a report from an existing comparison output directory."
+default_out: outputs/experiments/report
+steps:
+  - name: generate_report
+    enabled: true
+    command: [python, scripts/generate_report.py, --root, outputs/comparison_run, --out, "{out}", --title, "ShapeSplat++ Experiment Report", --no-run-metadata]
+

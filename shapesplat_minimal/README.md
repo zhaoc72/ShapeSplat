@@ -619,3 +619,48 @@ python scripts/run_edit_dataset.py --config configs/editing.yaml --manifest exam
 主要输出包括 `original_render.png`、`edited_render.png`、`diff_heatmap.png`、`edit_region.png`、`non_edit_region.png`、`object_alpha_before.png`、`object_alpha_after.png`、`edit_metrics.json` 和 `edit_summary.json`。
 
 指标说明：`CollateralL1` 衡量非编辑区域 RGB 变化；`AlphaCollateral` 衡量非编辑区域 alpha 变化；`EditLocality` 越高越好；`DeletionResidual` 衡量删除后原物体区域残留；`ObjectSupportIoU` 衡量编辑后 object support 与原 mask 的一致性。这些是 minimal editing diagnostics；正式论文中可以替换 CollateralL1 为 Collateral LPIPS。
+## Experiment Orchestration / 统一实验入口
+
+查看可用 presets：
+
+```bash
+python scripts/list_presets.py
+```
+
+检查实验是否就绪：
+
+```bash
+python scripts/check_experiment_ready.py --preset comparison --out outputs/check_ready
+```
+
+dry run：
+
+```bash
+python scripts/run_experiment.py --preset comparison --out outputs/exp_comparison --dry-run
+```
+
+运行 comparison：
+
+```bash
+python scripts/run_experiment.py --preset comparison --out outputs/exp_comparison
+```
+
+运行 stress benchmark：
+
+```bash
+python scripts/run_experiment.py --preset stress --out outputs/exp_stress
+```
+
+运行 editing suite：
+
+```bash
+python scripts/run_experiment.py --preset editing --out outputs/exp_editing
+```
+
+运行 debug_all：
+
+```bash
+python scripts/run_experiment.py --preset debug_all --out outputs/exp_debug_all
+```
+
+输出包括 `experiment_plan.json`、`command_log.json`、`run_summary.json`、`readiness.json`、`logs/`、`run_info.json` 和 `metrics_summary.json`。orchestrator 只是统一调用已有脚本，不改变算法，用于减少实验命令复杂度。
