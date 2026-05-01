@@ -1,0 +1,91 @@
+{
+  "image_id": "mixed_000",
+  "subset": "mixed",
+  "num_objects": 3,
+  "object_infos": [
+    {
+      "object_id": 0,
+      "category": "circle",
+      "color": [
+        226,
+        80,
+        80
+      ],
+      "bbox_xyxy": [
+        27,
+        35,
+        71,
+        80
+      ],
+      "visible_area": 836,
+      "full_area_approx": 1581,
+      "is_truncated": false,
+      "scale": 1.1
+    },
+    {
+      "object_id": 1,
+      "category": "circle",
+      "color": [
+        75,
+        148,
+        230
+      ],
+      "bbox_xyxy": [
+        42,
+        46,
+        75,
+        79
+      ],
+      "visible_area": 845,
+      "full_area_approx": 845,
+      "is_truncated": false,
+      "scale": 0.8
+    },
+    {
+      "object_id": 2,
+      "category": "triangle",
+      "color": [
+        82,
+        178,
+        104
+      ],
+      "bbox_xyxy": [
+        94,
+        19,
+        109,
+        34
+      ],
+      "visible_area": 113,
+      "full_area_approx": 113,
+      "is_truncated": false,
+      "scale": 0.35
+    }
+  ],
+  "occlusion_pairs": [
+    [
+      1,
+      0
+    ]
+  ],
+  "depth_order_pairs": [
+    [
+      1,
+      0
+    ]
+  ],
+  "same_category_pairs": [
+    [
+      0,
+      1
+    ]
+  ],
+  "truncation_flags": {
+    "0": false,
+    "1": false,
+    "2": false
+  },
+  "scale_ratios": {
+    "max_over_min": 3.1428571428571432
+  },
+  "generation_seed": 8123
+}

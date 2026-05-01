@@ -569,3 +569,27 @@ python scripts/compare_runs.py --run-a outputs/run_a --run-b outputs/run_b --out
 ```
 
 这是轻量级实验追踪工具，不替代 MLflow/W&B；主要用于 ShapeSplat++ minimal 论文实验的可复现记录和调试。
+
+## Stress Benchmark / 遮挡与编辑稳定性压力测试
+
+创建 synthetic stress dataset：
+
+```bash
+python scripts/create_stress_dataset.py --out examples/stress_dataset --num-per-subset 4 --size 128
+```
+
+运行 stress benchmark：
+
+```bash
+python scripts/run_stress_benchmark.py --config configs/stress_benchmark.yaml --manifest examples/stress_dataset/manifest.csv --out outputs/stress_benchmark --max-images 12
+```
+
+打印 subset 表格：
+
+```bash
+python scripts/print_stress_table.py --summary outputs/stress_benchmark/stress_subset_summary.json
+```
+
+支持 subset：`normal`、`light_occlusion`、`heavy_occlusion`、`same_category`、`contact_heavy`、`truncation`、`scale_variation`、`small_object`、`mixed`。
+
+诊断指标包括 `SwapRateProxy`、`OrderAccProxy`、`OcclusionRecallProxy`、`TruncationStabilityProxy`。这些是 synthetic diagnostic metrics，不是最终真实 3D reconstruction metrics；它们用于调试 visible-hidden split、ownership rendering 和 edit consistency。

@@ -31,6 +31,18 @@ ABLATION_COLUMNS = [
     "DeletionResidual",
 ]
 
+STRESS_COLUMNS = [
+    "subset",
+    "num_images",
+    "AttrAcc_mean",
+    "Leakage_mean",
+    "InstIoU_mean_mean",
+    "SwapRateProxy_mean",
+    "OrderAccProxy_mean",
+    "OcclusionRecallProxy_mean",
+    "EditLocality_mean",
+]
+
 
 def _flatten_nested(prefix: str, value: Any, out: dict) -> None:
     if isinstance(value, dict):
@@ -119,4 +131,3 @@ def rank_methods(rows: list[dict], metric: str, higher_is_better: bool = True) -
             return float("-inf") if higher_is_better else float("inf")
 
     return sorted(rows, key=key, reverse=higher_is_better)
-

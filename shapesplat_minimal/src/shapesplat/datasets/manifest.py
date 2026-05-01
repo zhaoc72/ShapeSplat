@@ -62,6 +62,11 @@ def load_manifest(path: str | Path) -> list[ImageRecord]:
                 if not mask_path.is_absolute():
                     mask_path = manifest_path.parent / mask_path
                 metadata["mask_path"] = str(mask_path)
+            if "metadata_path" in metadata:
+                metadata_path = Path(str(metadata["metadata_path"]))
+                if not metadata_path.is_absolute():
+                    metadata_path = manifest_path.parent / metadata_path
+                metadata["metadata_path"] = str(metadata_path)
             records.append(ImageRecord(image_id=image_id, image_path=str(image_path), split=split, metadata=metadata))
 
     if not records:

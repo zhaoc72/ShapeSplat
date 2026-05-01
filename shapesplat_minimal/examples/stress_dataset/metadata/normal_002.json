@@ -1,0 +1,56 @@
+{
+  "image_id": "normal_002",
+  "subset": "normal",
+  "num_objects": 2,
+  "object_infos": [
+    {
+      "object_id": 0,
+      "category": "circle",
+      "color": [
+        226,
+        80,
+        80
+      ],
+      "bbox_xyxy": [
+        14,
+        28,
+        53,
+        67
+      ],
+      "visible_area": 1193,
+      "full_area_approx": 1193,
+      "is_truncated": false,
+      "scale": 0.95
+    },
+    {
+      "object_id": 1,
+      "category": "rectangle",
+      "color": [
+        75,
+        148,
+        230
+      ],
+      "bbox_xyxy": [
+        59,
+        41,
+        96,
+        78
+      ],
+      "visible_area": 1369,
+      "full_area_approx": 1369,
+      "is_truncated": false,
+      "scale": 0.9
+    }
+  ],
+  "occlusion_pairs": [],
+  "depth_order_pairs": [],
+  "same_category_pairs": [],
+  "truncation_flags": {
+    "0": false,
+    "1": false
+  },
+  "scale_ratios": {
+    "max_over_min": 1.0555555555555556
+  },
+  "generation_seed": 125
+}

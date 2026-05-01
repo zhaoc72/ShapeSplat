@@ -1,0 +1,76 @@
+{
+  "image_id": "contact_heavy_003",
+  "subset": "contact_heavy",
+  "num_objects": 3,
+  "object_infos": [
+    {
+      "object_id": 0,
+      "category": "circle",
+      "color": [
+        226,
+        80,
+        80
+      ],
+      "bbox_xyxy": [
+        27,
+        44,
+        54,
+        83
+      ],
+      "visible_area": 664,
+      "full_area_approx": 1193,
+      "is_truncated": false,
+      "scale": 0.95
+    },
+    {
+      "object_id": 1,
+      "category": "rectangle",
+      "color": [
+        75,
+        148,
+        230
+      ],
+      "bbox_xyxy": [
+        48,
+        46,
+        85,
+        83
+      ],
+      "visible_area": 1012,
+      "full_area_approx": 1369,
+      "is_truncated": false,
+      "scale": 0.9
+    },
+    {
+      "object_id": 2,
+      "category": "triangle",
+      "color": [
+        82,
+        178,
+        104
+      ],
+      "bbox_xyxy": [
+        66,
+        48,
+        101,
+        83
+      ],
+      "visible_area": 613,
+      "full_area_approx": 613,
+      "is_truncated": false,
+      "scale": 0.85
+    }
+  ],
+  "occlusion_pairs": [],
+  "depth_order_pairs": [],
+  "same_category_pairs": [],
+  "truncation_flags": {
+    "0": false,
+    "1": false,
+    "2": false
+  },
+  "scale_ratios": {
+    "max_over_min": 1.1176470588235294
+  },
+  "generation_seed": 4126
+}

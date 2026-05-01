@@ -18,6 +18,7 @@ from shapesplat.reporting.qualitative import (
 from shapesplat.reporting.tables import (
     ABLATION_COLUMNS,
     COMPARISON_COLUMNS,
+    STRESS_COLUMNS,
     flatten_summary,
     make_markdown_table,
     select_table_columns,
@@ -94,8 +95,22 @@ def generate_experiment_report(
         )
         report_lines.extend(["## Ablation Summary", md, ""])
         manifest["ablation_table"] = str(tables_dir / "ablation_table.csv")
+    if "stress_subset_summary" in found:
+        rows = _rows_from_output(found["stress_subset_summary"])
+        md = _write_table(
+            rows,
+            STRESS_COLUMNS,
+            tables_dir / "stress_table.csv",
+            tables_dir / "stress_table.tex",
+            "Synthetic stress benchmark subset summary.",
+            "tab:stress_benchmark",
+        )
+        report_lines.extend(["## Stress Benchmark Summary", md, ""])
+        manifest["stress_table"] = str(tables_dir / "stress_table.csv")
     if "per_image_comparison" in found:
         per_image_rows = _rows_from_output(found["per_image_comparison"])
+    elif "stress_per_image" in found:
+        per_image_rows = _rows_from_output(found["stress_per_image"])
     elif "baseline_summary" in found:
         per_image_rows = _rows_from_output(found["baseline_summary"])
     elif "metrics_files" in found:
@@ -153,4 +168,3 @@ def generate_experiment_report(
     )
     save_json(manifest, out / "report_manifest.json")
     return manifest
-
