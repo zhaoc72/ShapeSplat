@@ -17,6 +17,7 @@ from shapesplat.data.image_io import load_image
 from shapesplat.data.synthetic import make_synthetic_image
 from shapesplat.evaluation.report import print_metrics
 from shapesplat.experiments.single_image import run_single_image_experiment
+from shapesplat.reproducibility.finalize import finalize_run_outputs
 from shapesplat.utils.seed import seed_everything
 
 
@@ -25,8 +26,10 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--config", required=True)
     parser.add_argument("--out", required=True)
     parser.add_argument("--input", default=None)
-    parser.add_argument("--mask", default=None, help="可选 file mask 路径；提供后启用 same-mask file 模式。")
+    parser.add_argument("--mask", default=None, help="可选 file mask，用于 same-mask 单图运行")
     parser.add_argument("--eval", action="store_true")
+    parser.add_argument("--no-run-metadata", action="store_true", help="不写入 run_info / registry 元数据")
+    parser.add_argument("--registry", default="runs/run_registry.jsonl", help="全局 run registry 路径")
     return parser.parse_args()
 
 
@@ -37,11 +40,8 @@ def run_pipeline(
     do_eval: bool = False,
     mask_path: str | Path | None = None,
 ) -> Path:
-    """运行单图 minimal pipeline。
+    """运行单图 minimal pipeline，并保持 CLI 旧输出结构不变。"""
 
-    输入优先级保持不变：CLI --input > cfg["image"]["input_path"] > synthetic image。
-    实际单图训练/保存逻辑复用 experiments.single_image，避免 batch runner 和单图脚本重复。
-    """
     cfg = load_config(config_path)
     if mask_path is not None:
         cfg["frontend"]["mask_source"] = "file"
@@ -76,7 +76,19 @@ def run_pipeline(
 
 def main() -> None:
     args = parse_args()
-    run_pipeline(args.config, args.out, args.input, do_eval=args.eval, mask_path=args.mask)
+    out_dir = run_pipeline(args.config, args.out, args.input, do_eval=args.eval, mask_path=args.mask)
+    if not args.no_run_metadata:
+        try:
+            # 元数据写入是可复现实验追踪的辅助步骤，失败时不影响主实验结果。
+            finalize_run_outputs(
+                out_dir=out_dir,
+                config_path=args.config,
+                run_type="minimal",
+                input_path=args.input,
+                registry_path=args.registry,
+            )
+        except Exception as exc:
+            print(f"warning: failed to write run metadata: {exc}")
 
 
 if __name__ == "__main__":

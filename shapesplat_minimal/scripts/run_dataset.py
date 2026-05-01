@@ -17,6 +17,7 @@ from shapesplat.datasets.image_dataset import build_dataset_from_manifest
 from shapesplat.experiments.batch_runner import run_batch_experiment
 from shapesplat.experiments.summary import save_batch_summary
 from shapesplat.evaluation.report import print_metrics
+from shapesplat.reproducibility.finalize import finalize_run_outputs
 from shapesplat.utils.seed import seed_everything
 
 
@@ -30,6 +31,8 @@ def main() -> None:
     parser.add_argument("--mask-source", default=None, help="覆盖 frontend.mask_source: sam/file/auto")
     parser.add_argument("--no-visuals", action="store_true")
     parser.add_argument("--save-checkpoint", action="store_true")
+    parser.add_argument("--no-run-metadata", action="store_true", help="不写入 run_info / registry 元数据")
+    parser.add_argument("--registry", default="runs/run_registry.jsonl", help="全局 run registry 路径")
     args = parser.parse_args()
 
     cfg = load_config(args.config)
@@ -50,6 +53,18 @@ def main() -> None:
     summary = save_batch_summary(rows, args.out)
     print_metrics(summary)
     print(f"Dataset run outputs saved to: {Path(args.out).resolve()}")
+    if not args.no_run_metadata:
+        try:
+            # batch runner 的 manifest 和 resolved config 会被快照，便于复现实验。
+            finalize_run_outputs(
+                out_dir=args.out,
+                config_path=args.config,
+                run_type="dataset",
+                manifest_path=args.manifest,
+                registry_path=args.registry,
+            )
+        except Exception as exc:
+            print(f"warning: failed to write run metadata: {exc}")
 
 
 if __name__ == "__main__":

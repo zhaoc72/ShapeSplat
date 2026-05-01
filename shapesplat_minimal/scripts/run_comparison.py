@@ -17,6 +17,7 @@ from shapesplat.datasets.image_dataset import build_dataset_from_manifest
 from shapesplat.experiments.comparison_runner import run_comparison_dataset
 from shapesplat.experiments.comparison_summary import save_comparison_summary
 from shapesplat.evaluation.report import print_metrics
+from shapesplat.reproducibility.finalize import finalize_run_outputs
 from shapesplat.utils.comparison_visualization import make_qualitative_index
 from shapesplat.utils.seed import seed_everything
 
@@ -32,6 +33,8 @@ def main() -> None:
     parser.add_argument("--no-dummy-baselines", action="store_true")
     parser.add_argument("--no-visuals", action="store_true")
     parser.add_argument("--save-checkpoint", action="store_true")
+    parser.add_argument("--no-run-metadata", action="store_true", help="不写入 run_info / registry 元数据")
+    parser.add_argument("--registry", default="runs/run_registry.jsonl", help="全局 run registry 路径")
     args = parser.parse_args()
 
     cfg = load_config(args.config)
@@ -56,8 +59,19 @@ def main() -> None:
     make_qualitative_index(args.out, Path(args.out) / "qualitative_index.md")
     print_metrics(summary)
     print(f"comparison outputs saved to: {Path(args.out).resolve()}")
+    if not args.no_run_metadata:
+        try:
+            # comparison run 记录 same-mask manifest 和 method-wise summary。
+            finalize_run_outputs(
+                out_dir=args.out,
+                config_path=args.config,
+                run_type="comparison",
+                manifest_path=args.manifest,
+                registry_path=args.registry,
+            )
+        except Exception as exc:
+            print(f"warning: failed to write run metadata: {exc}")
 
 
 if __name__ == "__main__":
     main()
-

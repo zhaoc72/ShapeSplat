@@ -546,3 +546,26 @@ external_baselines:
 ```
 
 真实 baseline 后续只需要写 adapter 或 command template，并输出符合 baseline output protocol 的文件：`render.png`、`alpha.png`、`ownership.npy` 或 `object_i_alpha.png`。
+## Reproducibility and Run Registry / 可复现实验追踪
+
+每次主要实验入口默认会在输出目录写入轻量元数据：`run_info.json`、`config_resolved.yaml`、`environment.json`、`command.txt`、`output_index.json`、`metrics_summary.json` 和 `file_hashes.json`。这些文件用于记录命令、配置快照、环境、关键指标和输出哈希，方便论文实验复查。
+
+手动补充已有输出目录：
+
+```bash
+python scripts/finalize_run.py --out outputs/comparison_run --config configs/comparison_minimal.yaml --run-type comparison --manifest examples/example_dataset/manifest.csv --status success
+```
+
+查看历史 runs：
+
+```bash
+python scripts/list_runs.py --registry runs/run_registry.jsonl --max-rows 20
+```
+
+比较两个 run：
+
+```bash
+python scripts/compare_runs.py --run-a outputs/run_a --run-b outputs/run_b --out outputs/run_compare
+```
+
+这是轻量级实验追踪工具，不替代 MLflow/W&B；主要用于 ShapeSplat++ minimal 论文实验的可复现记录和调试。

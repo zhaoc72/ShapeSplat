@@ -20,6 +20,7 @@ from shapesplat.evaluation.metrics import compute_basic_metrics
 from shapesplat.evaluation.report import flatten_metrics, merge_metrics, save_metrics_csv, save_metrics_json
 from shapesplat.frontend.pipeline import build_frontend
 from shapesplat.optimization.trainer import Trainer
+from shapesplat.reproducibility.finalize import finalize_run_outputs
 from shapesplat.utils.config_override import apply_overrides, load_ablation_file
 from shapesplat.utils.logging import save_json
 from shapesplat.utils.seed import seed_everything
@@ -41,7 +42,8 @@ SUMMARY_COLUMNS = [
 
 
 def run_one_ablation(base_cfg: dict, experiment: dict, input_path: str | None, out_dir: Path) -> dict:
-    """运行单个 ablation experiment，并保存 metrics/可视化/checkpoint。"""
+    """运行一个 ablation experiment，并保存和旧版本一致的输出文件。"""
+
     name = experiment["name"]
     cfg = apply_overrides(base_cfg, experiment.get("overrides", {}))
     cfg["ablation_name"] = name
@@ -57,7 +59,7 @@ def run_one_ablation(base_cfg: dict, experiment: dict, input_path: str | None, o
 
     front = build_frontend(image, cfg)
     if front.masks.shape[0] == 0:
-        raise RuntimeError(f"{name}: front-end 没有检测到 mask。")
+        raise RuntimeError(f"{name}: front-end produced no masks")
     save_mask_grid(front.masks, out_dir / "masks.png")
     save_input_with_mask_overlay(front.image, front.masks, out_dir / "input_mask_overlay.png")
 
@@ -77,8 +79,16 @@ def run_one_ablation(base_cfg: dict, experiment: dict, input_path: str | None, o
     return metrics
 
 
-def run_ablation_suite(config_path: str | Path, ablations_path: str | Path, input_path: str | None, out: str | Path, skip_existing: bool = False, max_experiments: int | None = None) -> list[dict]:
-    """批量运行 ablations.yaml 中的实验，并写 summary json/csv。"""
+def run_ablation_suite(
+    config_path: str | Path,
+    ablations_path: str | Path,
+    input_path: str | None,
+    out: str | Path,
+    skip_existing: bool = False,
+    max_experiments: int | None = None,
+) -> list[dict]:
+    """运行 ablations.yaml 中的实验，并生成 summary json/csv。"""
+
     base_cfg = load_config(config_path)
     experiments = load_ablation_file(ablations_path)
     if max_experiments is not None:
@@ -99,8 +109,7 @@ def run_ablation_suite(config_path: str | Path, ablations_path: str | Path, inpu
         else:
             metrics = run_one_ablation(base_cfg, exp, input_path, exp_dir)
         flat = flatten_metrics(metrics)
-        row = {key: flat.get(key, "") for key in SUMMARY_COLUMNS}
-        rows.append(row)
+        rows.append({key: flat.get(key, "") for key in SUMMARY_COLUMNS})
 
     save_metrics_json(rows, out_root / "ablation_summary.json")
     save_metrics_csv(rows, out_root / "ablation_summary.csv")
@@ -110,14 +119,29 @@ def run_ablation_suite(config_path: str | Path, ablations_path: str | Path, inpu
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Run ShapeSplat++ minimal ablation suite.")
-    parser.add_argument("--config", default="configs/minimal.yaml", help="base config 路径")
-    parser.add_argument("--ablations", default="configs/ablations.yaml", help="ablations.yaml 路径")
-    parser.add_argument("--input", default=None, help="可选输入 RGB 图像")
-    parser.add_argument("--out", default="outputs/ablations", help="输出根目录")
-    parser.add_argument("--skip-existing", action="store_true", help="如果 metrics.json 已存在则跳过该实验")
-    parser.add_argument("--max-experiments", type=int, default=None, help="调试时只跑前 N 个实验")
+    parser.add_argument("--config", default="configs/minimal.yaml", help="base config path")
+    parser.add_argument("--ablations", default="configs/ablations.yaml", help="ablations.yaml path")
+    parser.add_argument("--input", default=None, help="optional RGB input image")
+    parser.add_argument("--out", default="outputs/ablations", help="output directory")
+    parser.add_argument("--skip-existing", action="store_true", help="reuse existing metrics.json when available")
+    parser.add_argument("--max-experiments", type=int, default=None, help="debug: run only first N experiments")
+    parser.add_argument("--no-run-metadata", action="store_true", help="不写入 run_info / registry 元数据")
+    parser.add_argument("--registry", default="runs/run_registry.jsonl", help="全局 run registry 路径")
     args = parser.parse_args()
     run_ablation_suite(args.config, args.ablations, args.input, args.out, args.skip_existing, args.max_experiments)
+    if not args.no_run_metadata:
+        try:
+            # ablation suite 的元数据记录 base config、输入图像和 ablations 文件。
+            finalize_run_outputs(
+                out_dir=args.out,
+                config_path=args.config,
+                run_type="ablation",
+                input_path=args.input,
+                registry_path=args.registry,
+                notes={"ablations": str(args.ablations)},
+            )
+        except Exception as exc:
+            print(f"warning: failed to write run metadata: {exc}")
 
 
 if __name__ == "__main__":

@@ -19,6 +19,7 @@ from shapesplat.baselines.external_runner import run_external_baseline_for_image
 from shapesplat.config import load_config
 from shapesplat.data.image_io import load_image
 from shapesplat.frontend.file_mask_loader import load_mask_file
+from shapesplat.reproducibility.finalize import finalize_run_outputs
 
 
 def _load_external_cfg(path: str | Path, adapter: str) -> tuple[str, dict]:
@@ -42,6 +43,8 @@ def main() -> None:
     parser.add_argument("--out", required=True)
     parser.add_argument("--image-id", default="image")
     parser.add_argument("--dry-run", action="store_true")
+    parser.add_argument("--no-run-metadata", action="store_true", help="不写入 run_info / registry 元数据")
+    parser.add_argument("--registry", default="runs/run_registry.jsonl", help="全局 run registry 路径")
     args = parser.parse_args()
 
     cfg = load_config(args.config)
@@ -54,8 +57,21 @@ def main() -> None:
     for key in sorted(row):
         if key not in {"status"}:
             print(f"{key}: {row[key]}")
+    if not args.no_run_metadata:
+        try:
+            # external baseline 单图入口记录 adapter 配置和输入路径，便于复查外部命令。
+            finalize_run_outputs(
+                out_dir=args.out,
+                config_path=args.config,
+                run_type="external_baseline",
+                input_path=args.input,
+                registry_path=args.registry,
+                status=row.get("status", "success"),
+                notes={"external_config": str(args.external_config), "adapter": str(args.adapter)},
+            )
+        except Exception as exc:
+            print(f"warning: failed to write run metadata: {exc}")
 
 
 if __name__ == "__main__":
     main()
-

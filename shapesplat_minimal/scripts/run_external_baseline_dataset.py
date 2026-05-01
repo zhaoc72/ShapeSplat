@@ -20,6 +20,7 @@ from shapesplat.config import load_config
 from shapesplat.data.image_io import load_image
 from shapesplat.datasets.manifest import load_manifest
 from shapesplat.frontend.file_mask_loader import load_mask_file
+from shapesplat.reproducibility.finalize import finalize_run_outputs
 
 
 def _load_external_cfg(path: str | Path, adapter: str) -> tuple[str, dict]:
@@ -42,6 +43,8 @@ def main() -> None:
     parser.add_argument("--max-images", type=int, default=None)
     parser.add_argument("--dry-run", action="store_true")
     parser.add_argument("--skip-existing", action="store_true")
+    parser.add_argument("--no-run-metadata", action="store_true", help="不写入 run_info / registry 元数据")
+    parser.add_argument("--registry", default="runs/run_registry.jsonl", help="全局 run registry 路径")
     args = parser.parse_args()
 
     cfg = load_config(args.config)
@@ -68,8 +71,20 @@ def main() -> None:
     )
     print(f"external baseline rows: {len(rows)}")
     print(f"outputs saved to: {Path(args.out).resolve()}")
+    if not args.no_run_metadata:
+        try:
+            # external baseline dataset runner 记录 manifest 和 adapter 名称。
+            finalize_run_outputs(
+                out_dir=args.out,
+                config_path=args.config,
+                run_type="external_baseline_dataset",
+                manifest_path=args.manifest,
+                registry_path=args.registry,
+                notes={"external_config": str(args.external_config), "adapter": str(args.adapter)},
+            )
+        except Exception as exc:
+            print(f"warning: failed to write run metadata: {exc}")
 
 
 if __name__ == "__main__":
     main()
-
