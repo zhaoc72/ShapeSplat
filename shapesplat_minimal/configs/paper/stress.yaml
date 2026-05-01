@@ -1,0 +1,8 @@
+# stress benchmark profile：用于遮挡、同类物体和编辑稳定性诊断。
+profile: stress
+description: "Paper stress benchmark profile."
+config: configs/stress_benchmark.yaml
+manifest: examples/stress_dataset/manifest.csv
+out_name: stress
+max_images: 12
+create_if_missing: true

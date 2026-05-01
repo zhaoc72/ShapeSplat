@@ -64,6 +64,12 @@ def find_experiment_outputs(root: str | Path) -> dict[str, Path]:
         "stress_per_image": root / "stress_per_image.json",
         "edit_summary": root / "edit_summary.json",
         "edit_per_image": root / "edit_per_image.json",
+        "paper_run_summary": root / "paper_run_summary.json",
+        "paper_report": root / "paper_report.md",
+        "paper_main_table": root / "tables" / "main_comparison.csv",
+        "paper_ablation_table": root / "tables" / "ablation.csv",
+        "paper_stress_table": root / "tables" / "stress.csv",
+        "paper_editing_table": root / "tables" / "editing.csv",
         "comparison_csv": root / "comparison.csv",
         "metrics": root / "metrics.json",
     }

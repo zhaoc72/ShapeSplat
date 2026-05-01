@@ -1,0 +1,20 @@
+# 论文实验 smoke-test profile：使用 stub/minimal pipeline 快速验证完整流程。
+profile: debug
+description: "Small paper-style smoke test."
+output_subdir: paper_debug
+max_images: 2
+create_example_dataset: true
+create_stress_dataset: true
+run_main_comparison: true
+run_ablation: true
+run_stress: true
+run_editing: true
+run_baselines: true
+generate_report: true
+configs:
+  comparison: configs/benchmark_baseline.yaml
+  ablation: configs/minimal.yaml
+  stress: configs/stress_benchmark.yaml
+  editing: configs/editing.yaml
+  baseline: configs/baseline_protocol.yaml
+ablations: configs/ablations.yaml

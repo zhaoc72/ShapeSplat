@@ -1,0 +1,13 @@
+# editing profile：批量运行 object-level editing suite。
+profile: editing
+description: "Paper editing evaluation profile."
+config: configs/editing.yaml
+manifest: examples/example_dataset/manifest.csv
+out_name: editing
+max_images: 3
+max_objects: 2
+ops:
+  - remove
+  - translate
+  - scale
+  - isolate

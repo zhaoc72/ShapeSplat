@@ -1,0 +1,8 @@
+# 论文消融实验 profile：复用已有 ablation runner。
+profile: ablation
+description: "Paper ablation study profile."
+config: configs/minimal.yaml
+ablations: configs/ablations.yaml
+input: examples/test_image.png
+out_name: ablation
+max_experiments: null

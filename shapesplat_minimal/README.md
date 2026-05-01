@@ -741,3 +741,53 @@ python scripts/list_baseline_templates.py
 ```
 
 `independent_gaussian` is a minimal runnable baseline. SPAR3D / TRELLIS / VGGT / DUSt3R style methods are currently templates only; real integration still requires the external repository, model files, and an adapter that writes the baseline output protocol.
+
+## Paper Experiment Pack / 论文实验一键运行
+
+v2.2 adds a paper-style orchestration layer for running the current smoke-test versions of the main comparison, ablations, stress benchmark, editing evaluation, baseline checks, report generation, and LaTeX table export. It does not install or run real SPAR3D / TRELLIS / VGGT style baselines.
+
+Check whether a paper profile is ready:
+
+```bash
+python scripts/check_paper_ready.py --profile debug --out outputs/check_paper_ready
+```
+
+Dry-run the paper workflow:
+
+```bash
+python scripts/run_paper_experiments.py --profile debug --out outputs/paper_debug --dry-run
+```
+
+Run the debug paper experiments and export reports/tables:
+
+```bash
+python scripts/run_paper_experiments.py --profile debug --out outputs/paper_debug --generate-tables --generate-report
+```
+
+Export paper tables from an existing paper output directory:
+
+```bash
+python scripts/export_paper_tables.py --root outputs/paper_debug --kind all --out outputs/paper_debug/tables
+```
+
+The same workflow is also available through the experiment orchestrator:
+
+```bash
+python scripts/run_experiment.py --preset paper_debug --out outputs/exp_paper_debug
+```
+
+Typical outputs:
+
+```text
+outputs/paper_debug/
+  main_comparison/
+  ablation/
+  stress/
+  editing/
+  baselines/
+  tables/
+  paper_report.md
+  paper_run_summary.json
+```
+
+`debug` is a smoke-test profile, not a formal paper result. Optional geometry metrics run only when GT point clouds are available. The soft renderer is useful for validating the experimental protocol, but it is not a final high-quality CUDA 3DGS renderer.
