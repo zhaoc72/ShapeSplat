@@ -21,12 +21,16 @@ from shapesplat.data.synthetic import make_synthetic_image
 from shapesplat.frontend.pipeline import build_frontend
 from shapesplat.gaussian.initialization import initialize_scene
 from shapesplat.renderer.backend import build_renderer
+from shapesplat.renderer.contract import validate_render_output
 from shapesplat.utils.seed import seed_everything
 from shapesplat.utils.visualization import save_ownership_argmax
 
 
 def _check_render_output(out, num_objects: int, height: int, width: int) -> dict:
     """检查 renderer 输出是否满足 ShapeSplat++ 的标准 RenderOutput contract。"""
+    contract = validate_render_output(out, num_objects, height, width, strict=True)
+    if not contract["valid"]:
+        raise AssertionError(contract["errors"])
     assert out.rgb.shape == (3, height, width)
     assert out.alpha.shape == (height, width)
     assert out.depth.shape == (height, width)

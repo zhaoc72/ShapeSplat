@@ -1,0 +1,17 @@
+external_baselines:
+  - name: spar3d_template
+    adapter: command_template
+    enabled: false
+    command: "python external_methods/spar3d/run.py --image {image} --crop-dir {crop_dir} --masks {masks} --out {output_dir}"
+  - name: sf3d_template
+    adapter: command_template
+    enabled: false
+    command: "python external_methods/sf3d/run.py --image {image} --crop-dir {crop_dir} --masks {masks} --out {output_dir}"
+  - name: trellis_template
+    adapter: command_template
+    enabled: false
+    command: "python external_methods/trellis/run.py --image {image} --crop-dir {crop_dir} --masks {masks} --out {output_dir}"
+  - name: hunyuan3d_template
+    adapter: command_template
+    enabled: false
+    command: "python external_methods/hunyuan3d/run.py --image {image} --crop-dir {crop_dir} --masks {masks} --out {output_dir}"

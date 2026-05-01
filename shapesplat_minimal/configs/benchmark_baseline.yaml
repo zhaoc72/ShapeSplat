@@ -1,0 +1,27 @@
+# benchmark + independent baseline smoke-test 配置，不是最终论文配置。
+seed: 7
+device: auto
+
+image:
+  size: 64
+
+frontend:
+  mask_source: file
+  sam_backend: stub
+  dino_backend: stub
+  depth_backend: stub
+
+renderer:
+  backend: soft
+
+training:
+  visible_warmup_iters: 3
+  hidden_prior_iters: 3
+  joint_ownership_iters: 3
+  edit_finetune_iters: 2
+
+baseline:
+  independent_gaussian:
+    visible_warmup_iters: 5
+    lr: 0.025
+    white_background: true

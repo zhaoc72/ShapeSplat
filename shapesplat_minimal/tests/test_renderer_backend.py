@@ -16,6 +16,7 @@ from shapesplat.data.synthetic import make_synthetic_image
 from shapesplat.frontend.pipeline import build_frontend
 from shapesplat.gaussian.initialization import initialize_scene
 from shapesplat.renderer.backend import build_renderer
+from shapesplat.renderer.contract import validate_render_output
 from shapesplat.renderer.real_renderer_placeholder import RealRendererPlaceholder
 from shapesplat.renderer.soft_renderer import SoftGaussianRenderer
 
@@ -62,6 +63,7 @@ def test_soft_renderer_output_contract():
     assert render.ownership.shape == (len(scene.objects), h, w)
     assert render.bg_ownership.shape == (h, w)
     assert render.contributions.shape[0] == front.masks.shape[0]
+    assert validate_render_output(render, len(scene.objects), h, w)["valid"]
 
 
 def test_ownership_normalization():

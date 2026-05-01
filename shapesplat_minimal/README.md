@@ -700,3 +700,44 @@ python scripts/run_experiment.py --preset shape_prior_check --out outputs/exp_sh
 ```
 
 Frontend cache files include `masks.npy`, `mask_confidences.npy`, `boxes.npy`, `descriptors.npy`, `depth.npy`, `frontend_meta.json`, and optional `dino_features.pt`. Shape descriptor precompute currently supports `point_stats` and `random`; a future real paper pipeline can replace this with multi-view DINO descriptors.
+## Benchmark and Baseline Pack
+
+v2.1 adds standard same-mask benchmark validation, renderer contract checks, a runnable independent Gaussian-style baseline, and command templates for future external baselines.
+
+Validate a benchmark manifest:
+
+```bash
+python scripts/validate_benchmark.py --manifest examples/example_dataset/manifest.csv --config configs/same_mask.yaml --out outputs/benchmark_validation
+```
+
+Build a standard same-mask benchmark directory:
+
+```bash
+python scripts/build_same_mask_benchmark.py --source-manifest examples/example_dataset/manifest.csv --out data/same_mask_example --copy-files --overwrite
+```
+
+Check the renderer contract:
+
+```bash
+python scripts/check_renderer_backend.py --config configs/minimal.yaml --backend soft --out outputs/check_renderer_soft
+```
+
+Run the independent Gaussian baseline:
+
+```bash
+python scripts/run_independent_gaussian_baseline.py --config configs/benchmark_baseline.yaml --input examples/example_dataset/images/example_000.png --mask examples/example_dataset/masks/example_000.npy --out outputs/independent_gaussian/example_000 --image-id example_000
+```
+
+Include the independent baseline in comparison:
+
+```bash
+python scripts/run_comparison.py --config configs/benchmark_baseline.yaml --manifest examples/example_dataset/manifest.csv --out outputs/comparison_with_independent --max-images 3 --run-independent-gaussian
+```
+
+List external baseline command templates:
+
+```bash
+python scripts/list_baseline_templates.py
+```
+
+`independent_gaussian` is a minimal runnable baseline. SPAR3D / TRELLIS / VGGT / DUSt3R style methods are currently templates only; real integration still requires the external repository, model files, and an adapter that writes the baseline output protocol.

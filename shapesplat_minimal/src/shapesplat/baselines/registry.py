@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from shapesplat.baselines.adapters import BaselineAdapter, CommandTemplateAdapter, DummyExternalAdapter
+from shapesplat.baselines.adapters import BaselineAdapter, CommandTemplateAdapter, DummyExternalAdapter, IndependentGaussianAdapter
 
 
 BASELINE_ADAPTERS: dict[str, type[BaselineAdapter]] = {}
@@ -33,4 +33,4 @@ def list_adapters() -> list[str]:
 
 register_adapter("dummy_external", DummyExternalAdapter)
 register_adapter("command_template", CommandTemplateAdapter)
-
+register_adapter("independent_gaussian", IndependentGaussianAdapter)

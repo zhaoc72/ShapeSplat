@@ -31,6 +31,7 @@ def main() -> None:
     parser.add_argument("--skip-existing", action="store_true")
     parser.add_argument("--no-ours", action="store_true")
     parser.add_argument("--no-dummy-baselines", action="store_true")
+    parser.add_argument("--run-independent-gaussian", action="store_true")
     parser.add_argument("--no-visuals", action="store_true")
     parser.add_argument("--save-checkpoint", action="store_true")
     parser.add_argument("--no-run-metadata", action="store_true", help="不写入 run_info / registry 元数据")
@@ -52,6 +53,7 @@ def main() -> None:
         skip_existing=args.skip_existing,
         run_ours=not args.no_ours,
         run_dummy_baselines=not args.no_dummy_baselines,
+        run_independent_gaussian=args.run_independent_gaussian,
         save_visuals=not args.no_visuals,
         save_checkpoint=args.save_checkpoint,
     )

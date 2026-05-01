@@ -6,6 +6,7 @@ from pathlib import Path
 import numpy as np
 
 from shapesplat.baselines.dummy_baselines import identity_mask_baseline, save_baseline_prediction
+from shapesplat.baselines.independent_gaussian import run_independent_gaussian_baseline
 from shapesplat.baselines.protocol import BaselineInputSpec, BaselineOutputSpec
 from shapesplat.baselines.validate_outputs import validate_baseline_output_dir
 from shapesplat.data.image_io import load_image
@@ -152,3 +153,44 @@ class CommandTemplateAdapter(BaselineAdapter):
             metadata={"command": command},
         )
 
+
+class IndependentGaussianAdapter(BaselineAdapter):
+    """内置 independent Gaussian baseline adapter。
+
+    这不是外部真实方法，只是让 registry/runner 可以统一发现一个可运行 baseline。
+    """
+
+    name = "independent_gaussian"
+
+    def build_command(self, input_spec: BaselineInputSpec, output_dir: Path, cfg: dict) -> str:
+        return f"independent_gaussian --image {input_spec.image_path} --masks {input_spec.masks_path} --out {output_dir}"
+
+    def run(self, input_spec: BaselineInputSpec, output_dir: Path, cfg: dict, dry_run: bool = False) -> BaselineOutputSpec:
+        output_dir = Path(output_dir)
+        output_dir.mkdir(parents=True, exist_ok=True)
+        if dry_run:
+            return BaselineOutputSpec(
+                method_name=self.name,
+                image_id=input_spec.image_id,
+                output_dir=str(output_dir),
+                render_path=None,
+                alpha_path=None,
+                ownership_path=None,
+                metrics_path=None,
+                metadata={"dry_run": True, "command": self.build_command(input_spec, output_dir, cfg)},
+            )
+        image = load_image(input_spec.image_path, size=None)
+        masks = np.load(input_spec.masks_path)
+        import torch
+
+        run_independent_gaussian_baseline(image, torch.from_numpy(masks).float(), cfg, output_dir, input_spec.image_id)
+        return BaselineOutputSpec(
+            method_name=self.name,
+            image_id=input_spec.image_id,
+            output_dir=str(output_dir),
+            render_path=str(output_dir / "render.png"),
+            alpha_path=str(output_dir / "alpha.png"),
+            ownership_path=str(output_dir / "ownership.npy"),
+            metrics_path=str(output_dir / "metrics.json"),
+            metadata={"internal_baseline": True},
+        )

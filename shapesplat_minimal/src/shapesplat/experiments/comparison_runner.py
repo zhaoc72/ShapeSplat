@@ -10,6 +10,7 @@ import torch
 from shapesplat.baselines.dummy_baselines import DUMMY_BASELINES, run_dummy_baseline, save_baseline_prediction
 from shapesplat.baselines.evaluate_baseline import evaluate_baseline_prediction
 from shapesplat.baselines.export_inputs import export_baseline_inputs
+from shapesplat.baselines.independent_gaussian import run_independent_gaussian_baseline
 from shapesplat.baselines.load_outputs import load_baseline_output
 from shapesplat.data.image_io import save_tensor_image
 from shapesplat.evaluation.report import flatten_metrics, save_metrics_csv, save_metrics_json
@@ -64,6 +65,7 @@ def run_comparison_for_image(
     image_id: str,
     run_ours: bool = True,
     run_dummy_baselines: bool = True,
+    run_independent_gaussian: bool = False,
     external_baseline_dirs: dict[str, str] | None = None,
     save_visuals: bool = True,
     save_checkpoint: bool = False,
@@ -121,6 +123,18 @@ def run_comparison_for_image(
                 save_metrics_json(err, method_dir / "metrics.json")
                 rows.append(err)
 
+    if run_independent_gaussian:
+        method_dir = out_dir / "baselines" / "independent_gaussian"
+        try:
+            row = run_independent_gaussian_baseline(image, masks, cfg, method_dir, image_id=image_id, save_visuals=save_visuals)
+            rows.append(row)
+            method_outputs["independent_gaussian"] = load_baseline_output(method_dir, "independent_gaussian", image_id)
+        except Exception as exc:
+            method_dir.mkdir(parents=True, exist_ok=True)
+            err = _row("independent_gaussian", image_id, "failed", method_dir, error=str(exc))
+            save_metrics_json(err, method_dir / "metrics.json")
+            rows.append(err)
+
     for method, directory in (external_baseline_dirs or {}).items():
         method_dir = out_dir / "external" / method
         try:
@@ -163,6 +177,7 @@ def run_comparison_dataset(
     skip_existing: bool = False,
     run_ours: bool = True,
     run_dummy_baselines: bool = True,
+    run_independent_gaussian: bool = False,
     save_visuals: bool = True,
     save_checkpoint: bool = False,
 ) -> list[dict]:
@@ -197,6 +212,7 @@ def run_comparison_dataset(
                     image_id,
                     run_ours=run_ours,
                     run_dummy_baselines=run_dummy_baselines,
+                    run_independent_gaussian=run_independent_gaussian,
                     save_visuals=save_visuals,
                     save_checkpoint=save_checkpoint,
                 )
