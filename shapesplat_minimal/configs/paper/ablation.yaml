@@ -6,3 +6,7 @@ ablations: configs/ablations.yaml
 input: examples/test_image.png
 out_name: ablation
 max_experiments: null
+frontend_cache:
+  use_cache: false
+  cache_manifest: null
+  cache_root: null

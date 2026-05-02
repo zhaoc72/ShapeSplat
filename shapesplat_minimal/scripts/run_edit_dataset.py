@@ -13,6 +13,7 @@ SRC = ROOT / "src"
 if str(SRC) not in sys.path:
     sys.path.insert(0, str(SRC))
 
+from shapesplat.cache.attach import apply_frontend_cache_config, attach_cache_to_dataset
 from shapesplat.config import load_config
 from shapesplat.data.image_io import load_image
 from shapesplat.datasets.manifest import load_manifest
@@ -24,13 +25,42 @@ from shapesplat.reproducibility.finalize import finalize_run_outputs
 from shapesplat.utils.seed import seed_everything
 
 
-def run_edit_dataset(config_path, manifest_path, out_dir, max_images=None, max_objects=2, ops=None, skip_existing=False, save_visuals=True):
+def run_edit_dataset(
+    config_path,
+    manifest_path,
+    out_dir,
+    max_images=None,
+    max_objects=2,
+    ops=None,
+    skip_existing=False,
+    save_visuals=True,
+    use_frontend_cache=False,
+    frontend_cache_root=None,
+    frontend_cache_manifest=None,
+    save_frontend_cache=False,
+    frontend_cache_out=None,
+):
     """批量编辑稳定性评估；单图失败不会中断整个 dataset。"""
 
     cfg = load_config(config_path)
     cfg.setdefault("frontend", {})["mask_source"] = "file"
+    apply_frontend_cache_config(
+        cfg,
+        use_cache=use_frontend_cache,
+        cache_root=frontend_cache_root,
+        cache_manifest=frontend_cache_manifest,
+        save_cache=save_frontend_cache,
+        cache_out=frontend_cache_out,
+    )
     seed_everything(int(cfg.get("seed", 0)))
     records = load_manifest(manifest_path)
+    # 将 cache manifest/root 绑定到每条记录，后续 build_frontend 会自动加载。
+    cache_cfg = cfg.get("frontend_cache", {})
+    attach_cache_to_dataset(
+        records,
+        cache_manifest=frontend_cache_manifest or cache_cfg.get("cache_manifest"),
+        cache_root=frontend_cache_root or frontend_cache_out or cache_cfg.get("cache_root"),
+    )
     if max_images is not None:
         records = records[: max(0, int(max_images))]
     out = Path(out_dir)
@@ -46,7 +76,14 @@ def run_edit_dataset(config_path, manifest_path, out_dir, max_images=None, max_o
             cfg_img["frontend"] = dict(cfg.get("frontend", {}))
             cfg_img["frontend"]["mask_path"] = record.metadata.get("mask_path")
             image = load_image(record.image_path, size=int(cfg["image"]["size"]))
-            front = build_frontend(image, cfg_img, record=record)
+            front = build_frontend(
+                image,
+                cfg_img,
+                record=record,
+                cache_dir=record.metadata.get("frontend_cache_dir"),
+                use_cache=use_frontend_cache or bool(cfg.get("frontend_cache", {}).get("use_cache", False)),
+                save_cache=save_frontend_cache or bool(cfg.get("frontend_cache", {}).get("save_cache", False)),
+            )
             trainer = Trainer(front, cfg_img)
             trainer.train()
             object_ids = list(range(min(len(trainer.scene.objects), int(max_objects))))
@@ -77,11 +114,30 @@ def main() -> None:
     parser.add_argument("--ops", default=None)
     parser.add_argument("--skip-existing", action="store_true")
     parser.add_argument("--no-visuals", action="store_true")
+    parser.add_argument("--use-frontend-cache", action="store_true")
+    parser.add_argument("--frontend-cache-root", default=None)
+    parser.add_argument("--frontend-cache-manifest", default=None)
+    parser.add_argument("--save-frontend-cache", action="store_true")
+    parser.add_argument("--frontend-cache-out", default=None)
     parser.add_argument("--no-run-metadata", action="store_true")
     parser.add_argument("--registry", default="runs/run_registry.jsonl")
     args = parser.parse_args()
     ops = [x.strip() for x in args.ops.split(",") if x.strip()] if args.ops else None
-    rows = run_edit_dataset(args.config, args.manifest, args.out, max_images=args.max_images, max_objects=args.max_objects, ops=ops, skip_existing=args.skip_existing, save_visuals=not args.no_visuals)
+    rows = run_edit_dataset(
+        args.config,
+        args.manifest,
+        args.out,
+        max_images=args.max_images,
+        max_objects=args.max_objects,
+        ops=ops,
+        skip_existing=args.skip_existing,
+        save_visuals=not args.no_visuals,
+        use_frontend_cache=args.use_frontend_cache,
+        frontend_cache_root=args.frontend_cache_root,
+        frontend_cache_manifest=args.frontend_cache_manifest,
+        save_frontend_cache=args.save_frontend_cache,
+        frontend_cache_out=args.frontend_cache_out,
+    )
     print(f"edit dataset rows: {len(rows)}")
     print(f"outputs saved to: {Path(args.out).resolve()}")
     if not args.no_run_metadata:
@@ -93,4 +149,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-

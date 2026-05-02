@@ -24,6 +24,9 @@ def run_single_image_experiment(
     save_visuals: bool = True,
     save_checkpoint: bool = True,
     eval_metrics: bool = True,
+    frontend_cache_dir=None,
+    use_frontend_cache: bool = False,
+    save_frontend_cache: bool = False,
 ) -> dict:
     """运行单张图像的最小 ShapeSplat++ 实验。
 
@@ -37,7 +40,14 @@ def run_single_image_experiment(
         save_tensor_image(image, out_path / "input.png")
 
     # batch experiment 中 record.metadata 可以携带 mask_path，从而启用 same-mask protocol。
-    front = build_frontend(image, cfg, record=record)
+    front = build_frontend(
+        image,
+        cfg,
+        record=record,
+        cache_dir=frontend_cache_dir,
+        use_cache=use_frontend_cache,
+        save_cache=save_frontend_cache,
+    )
     if front.masks.shape[0] == 0:
         raise RuntimeError(f"{image_id}: front-end produced no masks.")
     if save_visuals:

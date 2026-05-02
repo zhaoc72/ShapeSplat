@@ -17,6 +17,7 @@ if str(SRC) not in sys.path:
 from shapesplat.experiments.orchestrator import load_preset, run_experiment_plan
 from shapesplat.experiments.readiness import check_experiment_ready
 from shapesplat.reproducibility.finalize import finalize_run_outputs
+from shapesplat.runtime.cli import add_runtime_args
 
 
 def _preset_path(args) -> Path:
@@ -39,6 +40,34 @@ def _save_json(obj, path: Path) -> None:
         json.dump(obj, f, indent=2, ensure_ascii=False)
 
 
+def _runtime_cli_args(args) -> list[str]:
+    out: list[str] = []
+    if args.device:
+        out += ["--device", args.device]
+    if args.cuda_device is not None:
+        out += ["--cuda-device", str(args.cuda_device)]
+    if args.require_cuda:
+        out.append("--require-cuda")
+    if args.allow_cpu_fallback:
+        out.append("--allow-cpu-fallback")
+    if args.mixed_precision:
+        out.append("--mixed-precision")
+    if args.runtime_summary:
+        out.append("--runtime-summary")
+    return out
+
+
+def _inject_runtime_args(plan, runtime_args: list[str]) -> None:
+    # 中文注释：只向已支持 runtime CLI 的脚本注入参数，避免破坏不认识这些参数的旧脚本。
+    supported = {"scripts/run_minimal.py", "scripts/run_ours_benchmark.py", "scripts/run_final_paper.py", "scripts/run_paper_experiments.py"}
+    if not runtime_args:
+        return
+    for step in plan.steps:
+        cmd = step.command
+        if len(cmd) >= 2 and cmd[1].replace("\\", "/") in supported:
+            step.command = [*cmd, *runtime_args]
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Unified ShapeSplat++ experiment launcher.")
     parser.add_argument("--preset", default="minimal")
@@ -54,10 +83,12 @@ def main() -> None:
     parser.add_argument("--registry", default="runs/run_registry.jsonl")
     parser.add_argument("--no-run-metadata", action="store_true")
     parser.add_argument("--set", dest="overrides", action="append", default=[])
+    add_runtime_args(parser)
     args = parser.parse_args()
 
     preset_path = _preset_path(args)
     plan = load_preset(preset_path)
+    _inject_runtime_args(plan, _runtime_cli_args(args))
     out_dir = Path(args.out or plan.default_out)
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     context = {
@@ -102,4 +133,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-

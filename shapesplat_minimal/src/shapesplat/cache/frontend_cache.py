@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from dataclasses import asdict, dataclass
+import csv
+from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Optional
 
@@ -27,6 +28,27 @@ class FrontendCacheRecord:
     visualization_paths: dict
 
 
+@dataclass
+class FrontendCacheManifestRecord:
+    """frontend cache manifest 的一行记录。
+
+    cache manifest 让 dataset/comparison/stress/editing runner 可以按 image_id
+    快速找到 cached front-end outputs；cache 中 masks 是 retained visible masks。
+    """
+
+    image_id: str
+    image_path: str
+    cache_dir: str
+    masks_path: str
+    descriptors_path: str
+    depth_path: str
+    meta_path: str
+    status: str = "valid"
+    num_masks: int | None = None
+    descriptor_dim: int | None = None
+    warnings: list[str] = field(default_factory=list)
+
+
 def frontend_cache_exists(cache_dir: str | Path) -> bool:
     """检查最小可用 cache 是否存在。
 
@@ -35,6 +57,100 @@ def frontend_cache_exists(cache_dir: str | Path) -> bool:
     root = Path(cache_dir)
     required = ["masks.npy", "descriptors.npy", "depth.npy", "frontend_meta.json"]
     return all((root / name).exists() for name in required)
+
+
+def write_frontend_cache_manifest(records: list[FrontendCacheManifestRecord], path: str | Path) -> None:
+    """写出 frontend cache manifest CSV。"""
+
+    path = Path(path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    fields = [
+        "image_id",
+        "image_path",
+        "cache_dir",
+        "masks_path",
+        "descriptors_path",
+        "depth_path",
+        "meta_path",
+        "status",
+        "num_masks",
+        "descriptor_dim",
+        "warnings",
+    ]
+    with open(path, "w", encoding="utf-8", newline="") as f:
+        writer = csv.DictWriter(f, fieldnames=fields)
+        writer.writeheader()
+        for record in records:
+            row = asdict(record)
+            row["warnings"] = "|".join(record.warnings)
+            writer.writerow(row)
+
+
+def load_frontend_cache_manifest(path: str | Path) -> dict[str, FrontendCacheManifestRecord]:
+    """读取 frontend cache manifest，并按 image_id 建索引。"""
+
+    out: dict[str, FrontendCacheManifestRecord] = {}
+    with open(path, "r", encoding="utf-8", newline="") as f:
+        for row in csv.DictReader(f):
+            warnings = [x for x in (row.get("warnings") or "").split("|") if x]
+            record = FrontendCacheManifestRecord(
+                image_id=row["image_id"],
+                image_path=row.get("image_path", ""),
+                cache_dir=row["cache_dir"],
+                masks_path=row["masks_path"],
+                descriptors_path=row["descriptors_path"],
+                depth_path=row["depth_path"],
+                meta_path=row["meta_path"],
+                status=row.get("status", "valid"),
+                num_masks=int(row["num_masks"]) if row.get("num_masks") not in (None, "") else None,
+                descriptor_dim=int(row["descriptor_dim"]) if row.get("descriptor_dim") not in (None, "") else None,
+                warnings=warnings,
+            )
+            out[record.image_id] = record
+    return out
+
+
+def build_cache_manifest_from_root(cache_root: str | Path, image_manifest: str | Path | None = None) -> list[FrontendCacheManifestRecord]:
+    """从 cache root 自动构建 cache manifest records。"""
+
+    image_paths: dict[str, str] = {}
+    if image_manifest is not None:
+        from shapesplat.datasets.manifest import load_manifest
+
+        image_paths = {r.image_id: r.image_path for r in load_manifest(image_manifest)}
+    records: list[FrontendCacheManifestRecord] = []
+    for cache_dir in sorted(Path(cache_root).iterdir() if Path(cache_root).exists() else []):
+        if not cache_dir.is_dir():
+            continue
+        image_id = cache_dir.name
+        status = "valid" if frontend_cache_exists(cache_dir) else "invalid"
+        warnings = [] if status == "valid" else ["incomplete cache"]
+        num_masks = descriptor_dim = None
+        if status == "valid":
+            try:
+                masks = load_numpy(cache_dir / "masks.npy")
+                desc = load_numpy(cache_dir / "descriptors.npy")
+                num_masks = int(masks.shape[0])
+                descriptor_dim = int(desc.shape[1])
+            except Exception as exc:
+                status = "invalid"
+                warnings.append(str(exc))
+        records.append(
+            FrontendCacheManifestRecord(
+                image_id=image_id,
+                image_path=image_paths.get(image_id, ""),
+                cache_dir=str(cache_dir),
+                masks_path=str(cache_dir / "masks.npy"),
+                descriptors_path=str(cache_dir / "descriptors.npy"),
+                depth_path=str(cache_dir / "depth.npy"),
+                meta_path=str(cache_dir / "frontend_meta.json"),
+                status=status,
+                num_masks=num_masks,
+                descriptor_dim=descriptor_dim,
+                warnings=warnings,
+            )
+        )
+    return records
 
 
 def save_frontend_output(

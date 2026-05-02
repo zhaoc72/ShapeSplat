@@ -27,9 +27,28 @@ class Trainer:
         self.cfg = cfg
         self.scene = initialize_scene(front, cfg)
         self.renderer = build_renderer(front.camera, cfg)
+        self._check_device_consistency()
         self.optim = torch.optim.Adam(self.scene.parameters(), lr=cfg["training"]["lr"])
         self.loss_log: List[Dict[str, float | str | int]] = []
         self.global_step = 0
+
+    def _check_device_consistency(self) -> None:
+        """检查 frontend / scene / camera 是否在同一设备。
+
+        中文注释：Windows GPU 实验中 CPU/CUDA 张量混用会产生难读错误，所以在训练开始前主动失败。
+        """
+        expected = self.front.image.device
+        if self.front.masks.device != expected or self.front.descriptors.device != expected or self.front.depth.device != expected:
+            raise RuntimeError(
+                "Frontend tensors are on inconsistent devices: "
+                f"image={self.front.image.device}, masks={self.front.masks.device}, "
+                f"descriptors={self.front.descriptors.device}, depth={self.front.depth.device}"
+            )
+        if self.front.camera.device != expected:
+            raise RuntimeError(f"Camera device mismatch: camera={self.front.camera.device}, image={expected}")
+        for name, param in self.scene.named_parameters():
+            if param.device != expected:
+                raise RuntimeError(f"Scene parameter device mismatch: {name} on {param.device}, expected {expected}")
 
     def render(self) -> RenderOutput:
         return self.renderer(self.scene)

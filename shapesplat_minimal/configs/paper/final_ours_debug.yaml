@@ -1,0 +1,13 @@
+# Ours 主方法 debug profile：用于验证正式 runner，不代表投稿结果。
+profile: final_ours_debug
+description: "Run Ours core runner on a small benchmark v2 manifest."
+benchmark_schema: v2
+benchmark_manifest: data/example_benchmark_v2/manifest.csv
+manifest: data/example_benchmark_v2/manifest.csv
+config: configs/final_ours.yaml
+out_name: final_ours_debug
+max_images: 3
+use_frontend_cache: false
+frontend_cache_manifest: null
+run_ours_benchmark: true
+generate_report: true

@@ -16,6 +16,8 @@ def run_batch_experiment(
     save_visuals: bool = True,
     save_checkpoint: bool = False,
     eval_metrics: bool = True,
+    use_frontend_cache: bool = False,
+    save_frontend_cache: bool = False,
 ) -> list[dict]:
     """逐图运行 batch experiment。
 
@@ -52,6 +54,9 @@ def run_batch_experiment(
                 save_visuals=save_visuals,
                 save_checkpoint=save_checkpoint,
                 eval_metrics=eval_metrics,
+                frontend_cache_dir=getattr(item.get("record"), "metadata", {}).get("frontend_cache_dir"),
+                use_frontend_cache=use_frontend_cache or bool(cfg.get("frontend_cache", {}).get("use_cache", False)),
+                save_frontend_cache=save_frontend_cache or bool(cfg.get("frontend_cache", {}).get("save_cache", False)),
             )
             row["image_path"] = item["image_path"]
             rows.append(row)

@@ -32,8 +32,14 @@ def validate_render_output(render, num_objects: int, height: int, width: int, st
         (errors if strict else warnings).append(f"alpha range outside [0,1]: {alpha_min:.4f}, {alpha_max:.4f}")
     if float(render.contributions.detach().min().cpu()) < -1e-6:
         (errors if strict else warnings).append("contributions contain negative values")
+    if float(render.ownership.detach().min().cpu()) < -1e-6:
+        (errors if strict else warnings).append("ownership contains negative values")
+    if float(render.bg_ownership.detach().min().cpu()) < -1e-6:
+        (errors if strict else warnings).append("bg_ownership contains negative values")
     ownership_sum = render.bg_ownership + render.ownership.sum(dim=0)
     diff = (ownership_sum - 1.0).abs()
+    contribution_sum = render.contributions.sum(dim=0)
+    contribution_alpha_l1 = float((contribution_sum.clamp(0, 1) - render.alpha).abs().mean().detach().cpu())
     stats.update(
         {
             "ownership_sum_min": float(ownership_sum.min().detach().cpu()),
@@ -41,10 +47,20 @@ def validate_render_output(render, num_objects: int, height: int, width: int, st
             "ownership_sum_mean": float(ownership_sum.mean().detach().cpu()),
             "ownership_sum_abs_mean": float(diff.mean().detach().cpu()),
             "contribution_min": float(render.contributions.min().detach().cpu()),
+            "contribution_sum_mean": float(contribution_sum.mean().detach().cpu()),
+            "contribution_alpha_l1": contribution_alpha_l1,
         }
     )
+    if stats["ownership_sum_max"] > 1.0001:
+        (errors if strict else warnings).append(f"ownership sum exceeds 1: {stats['ownership_sum_max']:.6f}")
     if stats["ownership_sum_abs_mean"] > 1e-3:
         (errors if strict else warnings).append(f"ownership normalization error mean={stats['ownership_sum_abs_mean']:.6f}")
+    if contribution_alpha_l1 > 0.75:
+        warnings.append(f"contributions differ strongly from alpha, mean L1={contribution_alpha_l1:.6f}")
+    if getattr(render, "extras", None):
+        for key in ("renderer_backend", "library", "fallback", "fallback_reason"):
+            if key in render.extras:
+                stats[key] = render.extras[key]
     return {"valid": len(errors) == 0, "errors": errors, "warnings": warnings, "stats": stats}
 
 

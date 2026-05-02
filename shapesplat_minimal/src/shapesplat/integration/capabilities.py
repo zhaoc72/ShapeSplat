@@ -135,20 +135,39 @@ def detect_renderer_capability(cfg: dict) -> dict:
     rcfg = cfg.get("renderer", {})
     requested = str(rcfg.get("backend", "soft")).lower()
     out = _base("renderer", requested)
+    real_cfg = rcfg.get("real_3dgs", {})
+    out["details"].update(
+        {
+            "backend": requested,
+            "library": real_cfg.get("library", "auto"),
+            "use_native_contributions": bool(real_cfg.get("use_native_contributions", False)),
+            "object_contribution_mode": real_cfg.get("object_contribution_mode", "object_wise_alpha"),
+        }
+    )
     if requested == "soft":
         out["available"] = True
         return out
     module_name = rcfg.get("real_renderer_module")
     class_name = rcfg.get("real_renderer_class")
-    if not module_name or not class_name:
-        out["errors"].append("real_renderer_module/class is not configured")
-    else:
+    if module_name and class_name:
         try:
             module = importlib.import_module(module_name)
             getattr(module, class_name)
             out["available"] = True
+            out["details"]["library"] = "custom_module"
         except Exception as exc:
             out["errors"].append(f"real renderer import failed: {exc}")
+    else:
+        try:
+            from shapesplat.renderer.real_3dgs_adapter import Real3DGSRendererAdapter
+
+            adapter = Real3DGSRendererAdapter(camera=None, cfg=cfg)
+            out["available"] = bool(adapter.available)
+            out["details"]["library"] = adapter.library_name or real_cfg.get("library", "auto")
+            if not adapter.available:
+                out["errors"].append(adapter.error_message or "real 3DGS renderer unavailable")
+        except Exception as exc:
+            out["errors"].append(f"Real3DGSRendererAdapter detection failed: {exc}")
     if requested == "auto" and not out["available"] and rcfg.get("fallback_to_soft", True):
         out["will_fallback"] = True
         out["fallback_target"] = "soft"

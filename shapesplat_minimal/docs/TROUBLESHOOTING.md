@@ -130,4 +130,68 @@ python scripts/validate_artifact.py --matrix configs/command_matrix.yaml --group
 ```bash
 python scripts/run_quick_tests.py
 ```
+## RTX 5090 CUDA unavailable
 
+Symptom: `torch.cuda.is_available()` is false.
+Cause: CPU-only PyTorch build, missing driver, wrong conda env, or hidden GPU.
+Check:
+
+```powershell
+conda activate shapesplat
+python scripts/print_gpu_info.py
+nvidia-smi
+```
+
+Suggestion: install a PyTorch CUDA build compatible with your driver and RTX 5090.
+
+## CUDA available but matmul fails
+
+Symptom: `torch.cuda.is_available()` is true, but `check_gpu_runtime.py` fails during matmul/backward.
+Cause: PyTorch CUDA kernels may not support RTX 5090 / sm_120.
+
+```powershell
+python scripts/check_gpu_runtime.py --config configs/local_windows_rtx5090.yaml --device cuda --require-cuda --out outputs/check_gpu_runtime
+```
+
+## no kernel image is available for execution on the device
+
+Cause: the installed binary was compiled without this GPU architecture.
+Suggestion: install a newer compatible PyTorch/CUDA build; do not rely on CPU fallback for final GPU runs.
+
+## Conda environment is not shapesplat
+
+```powershell
+echo $env:CONDA_DEFAULT_ENV
+where python
+conda activate shapesplat
+```
+
+## PowerShell blocks ps1 execution
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts/run_windows_gpu_paper_debug.ps1
+```
+
+## Out of GPU memory
+
+Lower image size / max_images, use smaller debug profiles, and keep `runtime.empty_cache_between_images=true`.
+
+## Experiment unexpectedly runs on CPU
+
+Force CUDA and save runtime diagnostics:
+
+```powershell
+python scripts/run_minimal.py --config configs/minimal.yaml --out outputs/gpu_minimal --device cuda --require-cuda --runtime-summary
+```
+
+## Allow CPU fallback intentionally
+
+```powershell
+python scripts/run_gpu_smoke_experiment.py --config configs/local_windows_rtx5090.yaml --out outputs/gpu_smoke --iters 2 --allow-cpu-fallback
+```
+
+## Force CUDA
+
+```powershell
+python scripts/run_ours_benchmark.py --config configs/final_ours.yaml --manifest data/example_benchmark_v2/manifest.csv --out outputs/ours_gpu --device cuda --require-cuda
+```

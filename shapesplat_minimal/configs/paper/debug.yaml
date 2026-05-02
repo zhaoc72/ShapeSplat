@@ -18,3 +18,7 @@ configs:
   editing: configs/editing.yaml
   baseline: configs/baseline_protocol.yaml
 ablations: configs/ablations.yaml
+frontend_cache:
+  use_cache: false
+  cache_manifest: null
+  cache_root: null

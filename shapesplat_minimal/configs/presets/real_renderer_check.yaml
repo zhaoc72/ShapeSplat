@@ -1,0 +1,16 @@
+name: real_renderer_check
+description: "Check real 3DGS renderer adapter and fallback."
+default_out: outputs/experiments/real_renderer_check
+steps:
+  - name: check_real_renderer
+    enabled: true
+    command:
+      - python
+      - scripts/check_real_renderer.py
+      - --config
+      - configs/real_3dgs_renderer.yaml
+      - --backend
+      - auto
+      - --out
+      - "{out}/check_real_renderer"
+      - --allow-fallback

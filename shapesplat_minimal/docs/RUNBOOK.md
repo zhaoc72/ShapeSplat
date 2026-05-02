@@ -62,5 +62,16 @@ python scripts/run_paper_experiments.py --profile debug --out outputs/paper_debu
 python scripts/run_experiment.py --preset debug_all --out outputs/exp_debug_all
 ```
 
-这些命令使用 stub/minimal pipeline，不需要下载真实模型。
+## 10. Windows + RTX 5090 GPU Runtime
 
+```powershell
+conda activate shapesplat
+python scripts/print_gpu_info.py
+python scripts/check_gpu_runtime.py --config configs/local_windows_rtx5090.yaml --device cuda --require-cuda --out outputs/check_gpu_runtime
+python scripts/run_gpu_smoke_experiment.py --config configs/local_windows_rtx5090.yaml --out outputs/gpu_smoke --require-cuda --iters 2
+powershell -ExecutionPolicy Bypass -File scripts/run_windows_gpu_paper_debug.ps1
+```
+
+中文注释：如果 PyTorch CUDA build 不支持 RTX 5090 / sm_120，GPU check 会明确失败；普通 debug 可用 `--allow-cpu-fallback` 显式允许 CPU。
+
+这些命令使用 stub/minimal pipeline，不需要下载真实模型。

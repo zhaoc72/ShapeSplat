@@ -26,10 +26,29 @@ def _cmd(*parts) -> list[str]:
     return [str(p) for p in parts if p is not None and str(p) != ""]
 
 
+def _frontend_cache_args(profile: dict) -> list[str]:
+    """把 paper profile 中的 frontend_cache 配置翻译成下游 CLI 参数。
+    这里只是编排参数，不改变任何算法；默认未开启时返回空列表。
+    """
+
+    cache = profile.get("frontend_cache") or {}
+    if profile.get("use_frontend_cache"):
+        cache = {**cache, "use_cache": True, "cache_manifest": profile.get("frontend_cache_manifest") or cache.get("cache_manifest")}
+    if not cache.get("use_cache"):
+        return []
+    args = ["--use-frontend-cache"]
+    if cache.get("cache_manifest"):
+        args += ["--frontend-cache-manifest", str(cache["cache_manifest"])]
+    if cache.get("cache_root"):
+        args += ["--frontend-cache-root", str(cache["cache_root"])]
+    return args
+
+
 def _profile_commands(profile: dict, out_dir: Path) -> list[dict]:
     """把 paper profile 展开为已有脚本命令；这是 orchestration，不改变算法。"""
     p = profile.get("profile")
     max_images = profile.get("max_images")
+    cache_args = _frontend_cache_args(profile)
     commands: list[dict] = []
     if profile.get("create_example_dataset"):
         commands.append({"name": "create_example_dataset", "command": _cmd(sys.executable, "scripts/create_example_dataset.py", "--out", "examples/example_dataset", "--num-images", "4", "--size", "128")})
@@ -37,17 +56,66 @@ def _profile_commands(profile: dict, out_dir: Path) -> list[dict]:
         commands.append({"name": "create_stress_dataset", "command": _cmd(sys.executable, "scripts/create_stress_dataset.py", "--out", "examples/stress_dataset", "--num-per-subset", "2", "--size", "128")})
 
     def add_main(local_profile: dict, subdir: str = "main_comparison"):
-        cmd = _cmd(sys.executable, "scripts/run_comparison.py", "--config", local_profile.get("config", "configs/benchmark_baseline.yaml"), "--manifest", local_profile.get("manifest", "examples/example_dataset/manifest.csv"), "--out", out_dir / subdir, "--no-run-metadata")
+        manifest = local_profile.get("benchmark_manifest") or local_profile.get("manifest", "examples/example_dataset/manifest.csv")
+        cmd = _cmd(sys.executable, "scripts/run_comparison.py", "--config", local_profile.get("config", "configs/benchmark_baseline.yaml"), "--manifest", manifest, "--out", out_dir / subdir, "--no-run-metadata")
         if local_profile.get("max_images") is not None:
             cmd += ["--max-images", str(local_profile["max_images"])]
         if local_profile.get("run_independent_gaussian", True):
             cmd.append("--run-independent-gaussian")
         if not local_profile.get("run_dummy_baselines", True):
             cmd.append("--no-dummy-baselines")
+        cmd += _frontend_cache_args(local_profile) or cache_args
+        commands.append({"name": subdir, "command": cmd})
+
+    def add_ours(local_profile: dict, subdir: str = "final_ours_debug"):
+        # Ours core runner 直接面向 benchmark v2 manifest，仍然通过 CLI 编排，避免在 paper layer 重写算法流程。
+        manifest = local_profile.get("benchmark_manifest") or local_profile.get("manifest", "data/example_benchmark_v2/manifest.csv")
+        cmd = _cmd(sys.executable, "scripts/run_ours_benchmark.py", "--config", local_profile.get("config", "configs/final_ours.yaml"), "--manifest", manifest, "--out", out_dir / subdir, "--no-run-metadata")
+        if local_profile.get("max_images") is not None:
+            cmd += ["--max-images", str(local_profile["max_images"])]
+        if local_profile.get("frontend_cache_manifest"):
+            cmd += ["--frontend-cache-manifest", str(local_profile["frontend_cache_manifest"])]
+        if local_profile.get("use_frontend_cache"):
+            cmd.append("--use-frontend-cache")
         commands.append({"name": subdir, "command": cmd})
 
     if p == "main_comparison":
         add_main(profile, profile.get("out_name", "main_comparison"))
+    elif profile.get("run_ours_benchmark"):
+        add_ours(profile, profile.get("out_name", "final_ours_debug"))
+    elif p == "final_main":
+        # final_main 不重新训练方法，只统一评估已有 method outputs 并导出最终表格。
+        subdir = profile.get("out_name", "final_main")
+        cmd = _cmd(
+            sys.executable,
+            "scripts/run_final_comparison.py",
+            "--manifest",
+            profile.get("benchmark_manifest", profile.get("manifest", "data/example_benchmark_v2/manifest.csv")),
+            "--methods",
+            profile.get("method_catalog", "configs/method_catalog.yaml"),
+            "--outputs-config",
+            profile.get("method_outputs", "configs/final_method_outputs.yaml"),
+            "--config",
+            profile.get("config", "configs/final_ours.yaml"),
+            "--out",
+            out_dir / subdir,
+        )
+        if profile.get("max_images") is not None:
+            cmd += ["--max-images", str(profile["max_images"])]
+        commands.append({"name": "final_comparison", "command": cmd})
+        commands.append(
+            {
+                "name": "export_final_tables",
+                "command": _cmd(
+                    sys.executable,
+                    "scripts/export_final_tables.py",
+                    "--summary",
+                    out_dir / subdir / "final_method_summary.json",
+                    "--out",
+                    out_dir / subdir / "tables",
+                ),
+            }
+        )
     elif p == "ablation":
         cmd = _cmd(sys.executable, "scripts/run_ablation.py", "--config", profile.get("config", "configs/minimal.yaml"), "--ablations", profile.get("ablations", "configs/ablations.yaml"), "--input", profile.get("input"), "--out", out_dir / profile.get("out_name", "ablation"), "--no-run-metadata")
         if profile.get("max_experiments") is not None:
@@ -56,16 +124,20 @@ def _profile_commands(profile: dict, out_dir: Path) -> list[dict]:
     elif p == "stress":
         if profile.get("create_if_missing"):
             commands.append({"name": "create_stress_dataset", "command": _cmd(sys.executable, "scripts/create_stress_dataset.py", "--out", "examples/stress_dataset", "--num-per-subset", "2", "--size", "128")})
-        cmd = _cmd(sys.executable, "scripts/run_stress_benchmark.py", "--config", profile.get("config", "configs/stress_benchmark.yaml"), "--manifest", profile.get("manifest", "examples/stress_dataset/manifest.csv"), "--out", out_dir / profile.get("out_name", "stress"), "--no-run-metadata")
+        manifest = profile.get("benchmark_manifest") or profile.get("manifest", "examples/stress_dataset/manifest.csv")
+        cmd = _cmd(sys.executable, "scripts/run_stress_benchmark.py", "--config", profile.get("config", "configs/stress_benchmark.yaml"), "--manifest", manifest, "--out", out_dir / profile.get("out_name", "stress"), "--no-run-metadata")
         if profile.get("max_images") is not None:
             cmd += ["--max-images", str(profile["max_images"])]
+        cmd += cache_args
         commands.append({"name": "stress", "command": cmd})
     elif p == "editing":
-        cmd = _cmd(sys.executable, "scripts/run_edit_dataset.py", "--config", profile.get("config", "configs/editing.yaml"), "--manifest", profile.get("manifest", "examples/example_dataset/manifest.csv"), "--out", out_dir / profile.get("out_name", "editing"), "--max-objects", profile.get("max_objects", 2), "--no-run-metadata")
+        manifest = profile.get("benchmark_manifest") or profile.get("manifest", "examples/example_dataset/manifest.csv")
+        cmd = _cmd(sys.executable, "scripts/run_edit_dataset.py", "--config", profile.get("config", "configs/editing.yaml"), "--manifest", manifest, "--out", out_dir / profile.get("out_name", "editing"), "--max-objects", profile.get("max_objects", 2), "--no-run-metadata")
         if profile.get("max_images") is not None:
             cmd += ["--max-images", str(profile["max_images"])]
         if profile.get("ops"):
             cmd += ["--ops", ",".join(profile["ops"])]
+        cmd += cache_args
         commands.append({"name": "editing", "command": cmd})
     elif p == "baselines":
         cmd = _cmd(sys.executable, "scripts/run_baseline_dataset.py", "--config", profile.get("config", "configs/baseline_protocol.yaml"), "--manifest", profile.get("manifest", "examples/example_dataset/manifest.csv"), "--out", out_dir / profile.get("out_name", "baselines"))
@@ -77,13 +149,15 @@ def _profile_commands(profile: dict, out_dir: Path) -> list[dict]:
     elif p in {"debug", "all"}:
         configs = profile.get("configs", {})
         if profile.get("run_main_comparison"):
-            add_main({"config": configs.get("comparison", "configs/benchmark_baseline.yaml"), "manifest": "examples/example_dataset/manifest.csv", "max_images": max_images, "run_independent_gaussian": True}, "main_comparison")
+            add_main({"config": configs.get("comparison", "configs/benchmark_baseline.yaml"), "manifest": "examples/example_dataset/manifest.csv", "benchmark_manifest": profile.get("benchmark_manifest"), "max_images": max_images, "run_independent_gaussian": True, "frontend_cache": profile.get("frontend_cache"), "use_frontend_cache": profile.get("use_frontend_cache"), "frontend_cache_manifest": profile.get("frontend_cache_manifest")}, "main_comparison")
         if profile.get("run_ablation"):
             commands.append({"name": "ablation", "command": _cmd(sys.executable, "scripts/run_ablation.py", "--config", configs.get("ablation", "configs/minimal.yaml"), "--ablations", profile.get("ablations", "configs/ablations.yaml"), "--input", "examples/test_image.png", "--out", out_dir / "ablation", "--max-experiments", "2" if p == "debug" else "", "--no-run-metadata")})
         if profile.get("run_stress"):
-            commands.append({"name": "stress", "command": _cmd(sys.executable, "scripts/run_stress_benchmark.py", "--config", configs.get("stress", "configs/stress_benchmark.yaml"), "--manifest", "examples/stress_dataset/manifest.csv", "--out", out_dir / "stress", "--max-images", "4" if p == "debug" else str(max_images or 12), "--no-run-metadata")})
+            stress_manifest = profile.get("benchmark_manifest") or "examples/stress_dataset/manifest.csv"
+            commands.append({"name": "stress", "command": _cmd(sys.executable, "scripts/run_stress_benchmark.py", "--config", configs.get("stress", "configs/stress_benchmark.yaml"), "--manifest", stress_manifest, "--out", out_dir / "stress", "--max-images", "4" if p == "debug" else str(max_images or 12), "--no-run-metadata") + cache_args})
         if profile.get("run_editing"):
-            commands.append({"name": "editing", "command": _cmd(sys.executable, "scripts/run_edit_dataset.py", "--config", configs.get("editing", "configs/editing.yaml"), "--manifest", "examples/example_dataset/manifest.csv", "--out", out_dir / "editing", "--max-images", str(max_images or 3), "--max-objects", "1" if p == "debug" else "2", "--ops", "remove,translate", "--no-run-metadata")})
+            edit_manifest = profile.get("benchmark_manifest") or "examples/example_dataset/manifest.csv"
+            commands.append({"name": "editing", "command": _cmd(sys.executable, "scripts/run_edit_dataset.py", "--config", configs.get("editing", "configs/editing.yaml"), "--manifest", edit_manifest, "--out", out_dir / "editing", "--max-images", str(max_images or 3), "--max-objects", "1" if p == "debug" else "2", "--ops", "remove,translate", "--no-run-metadata") + cache_args})
         if profile.get("run_baselines"):
             commands.append({"name": "baselines", "command": _cmd(sys.executable, "scripts/run_baseline_dataset.py", "--config", configs.get("baseline", "configs/baseline_protocol.yaml"), "--manifest", "examples/example_dataset/manifest.csv", "--out", out_dir / "baselines", "--max-images", str(max_images or 3), "--run-dummy")})
     else:
@@ -133,6 +207,7 @@ def collect_paper_outputs(out_dir: str | Path) -> dict:
         "stress": out / "stress" / "stress_subset_summary.json",
         "editing": out / "editing" / "edit_summary.json",
         "baselines": out / "baselines" / "baseline_summary.json",
+        "final_ours": out / "final_ours_debug" / "ours_summary.json",
         "report": out / "reports" / "report.md",
     }
     return {k: v for k, v in candidates.items() if v.exists()}

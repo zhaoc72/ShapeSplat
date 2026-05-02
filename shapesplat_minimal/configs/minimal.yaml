@@ -1,6 +1,23 @@
 seed: 7
 device: auto
 
+# GPU runtime defaults. 中文注释：runtime.device 优先于旧 device 字段；显式 cuda 不可用时不会静默 CPU fallback。
+runtime:
+  device: auto
+  cuda_device: 0
+  prefer_gpu: true
+  allow_cpu_fallback: false
+  require_cuda_for_experiments: false
+  mixed_precision: false
+  amp_dtype: float16
+  benchmark_cudnn: true
+  deterministic: false
+  empty_cache_between_images: true
+  max_gpu_memory_fraction: null
+  warn_if_cuda_unavailable: true
+  fail_if_cuda_requested_but_unavailable: true
+  log_gpu_memory: true
+
 image:
   size: 64
   input_path: null
@@ -110,6 +127,28 @@ shape_bank:
   descriptor_seed: 123
 
 renderer:
+  backend: soft
+  # real_backend=auto 用于真实 3DGS adapter 的本地探测；默认 soft 不受影响。
+  real_backend: auto
+  # 用户可后续填写自定义真实 renderer 的 module/class；不填时使用 Real3DGSRendererAdapter 探测 diff_gaussian/gsplat。
+  real_renderer_module: null
+  real_renderer_class: null
+  fallback_to_soft: true
+  real_3dgs:
+    # library=auto 会尝试 diff_gaussian，再尝试 gsplat；不可用时 auto backend fallback soft。
+    library: auto
+    # 若真实 renderer 原生输出 per-object contribution，可设置 true。
+    use_native_contributions: false
+    # 默认 fallback 策略：逐物体渲染 alpha_n 再构造 ownership maps。
+    object_contribution_mode: object_wise_alpha
+    # 逐物体渲染会较慢，但能保持 ShapeSplat++ ownership supervision 协议。
+    render_objects_individually: true
+    background_color: [1.0, 1.0, 1.0]
+    sh_degree: 0
+    near: 0.01
+    far: 100.0
+    scale_modifier: 1.0
+    debug_save_intermediate: false
   # soft / real / auto。默认 soft 使用最小 PyTorch renderer。
   backend: soft
   # 真实 CUDA renderer 的 module/class 动态导入路径；minimal 版本默认不填写。

@@ -67,6 +67,13 @@ def load_manifest(path: str | Path) -> list[ImageRecord]:
                 if not metadata_path.is_absolute():
                     metadata_path = manifest_path.parent / metadata_path
                 metadata["metadata_path"] = str(metadata_path)
+            for cache_key in ("frontend_cache_dir", "cache_dir"):
+                if cache_key in metadata:
+                    cache_path = Path(str(metadata[cache_key]))
+                    if not cache_path.is_absolute():
+                        cache_path = manifest_path.parent / cache_path
+                    # frontend_cache_dir 是后续 runner 读取 cached frontend outputs 的标准键。
+                    metadata["frontend_cache_dir"] = str(cache_path)
             records.append(ImageRecord(image_id=image_id, image_path=str(image_path), split=split, metadata=metadata))
 
     if not records:

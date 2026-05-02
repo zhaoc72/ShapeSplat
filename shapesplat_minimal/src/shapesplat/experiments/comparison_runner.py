@@ -6,6 +6,7 @@ from pathlib import Path
 
 import numpy as np
 import torch
+import torch.nn.functional as F
 
 from shapesplat.baselines.dummy_baselines import DUMMY_BASELINES, run_dummy_baseline, save_baseline_prediction
 from shapesplat.baselines.evaluate_baseline import evaluate_baseline_prediction
@@ -36,6 +37,21 @@ def _row(method: str, image_id: str, status: str, output_dir: Path, metrics: dic
     return item
 
 
+def _resize_prediction_to_masks(pred: dict, masks: torch.Tensor) -> dict:
+    """把已保存的 Ours/baseline 输出对齐到当前 same-mask 分辨率。"""
+    h, w = masks.shape[-2:]
+    out = dict(pred)
+    if "rgb" in out and tuple(out["rgb"].shape[-2:]) != (h, w):
+        out["rgb"] = F.interpolate(out["rgb"][None].float(), size=(h, w), mode="bilinear", align_corners=False)[0].clamp(0, 1)
+    if "alpha" in out and tuple(out["alpha"].shape[-2:]) != (h, w):
+        out["alpha"] = F.interpolate(out["alpha"][None, None].float(), size=(h, w), mode="bilinear", align_corners=False)[0, 0].clamp(0, 1)
+    if "ownership" in out and tuple(out["ownership"].shape[-2:]) != (h, w):
+        out["ownership"] = F.interpolate(out["ownership"][None].float(), size=(h, w), mode="bilinear", align_corners=False)[0].clamp(0, 1)
+        out["ownership"] = out["ownership"] / out["ownership"].sum(dim=0, keepdim=True).clamp_min(1e-6)
+    out["bg_ownership"] = (1.0 - out.get("alpha", out["ownership"].sum(dim=0))).clamp(0, 1)
+    return out
+
+
 def _resolve_external_output_dir(base_dir: str | Path, method: str, image_id: str) -> Path:
     """按常见 external baseline dataset 输出结构查找某张图的输出目录。
 
@@ -57,6 +73,21 @@ def _resolve_external_output_dir(base_dir: str | Path, method: str, image_id: st
     return base
 
 
+def _resolve_ours_output_dir(base_dir: str | Path, image_id: str) -> Path:
+    """在已批量运行的 Ours benchmark 输出中按 image_id 找结果目录。"""
+    base = Path(base_dir)
+    candidates = [
+        base / "per_image" / image_id,
+        base / image_id,
+        base / "ours",
+        base,
+    ]
+    for path in candidates:
+        if path.exists() and ((path / "ownership.npy").exists() or (path / "output_spec.json").exists()):
+            return path
+    return base / "per_image" / image_id
+
+
 def run_comparison_for_image(
     image: torch.Tensor,
     masks: torch.Tensor,
@@ -69,6 +100,10 @@ def run_comparison_for_image(
     external_baseline_dirs: dict[str, str] | None = None,
     save_visuals: bool = True,
     save_checkpoint: bool = False,
+    frontend_cache_dir=None,
+    use_frontend_cache: bool = False,
+    save_frontend_cache: bool = False,
+    ours_output_dir: str | Path | None = None,
 ) -> list[dict]:
     """对单张图运行 same-mask comparison。
 
@@ -86,21 +121,33 @@ def run_comparison_for_image(
     if run_ours:
         ours_dir = out_dir / "ours"
         try:
-            cfg_ours = copy.deepcopy(cfg)
-            cfg_ours.setdefault("frontend", {})
-            cfg_ours["frontend"]["mask_source"] = "file"
-            cfg_ours["frontend"]["mask_path"] = str(shared_mask_path)
-            ours_row = run_single_image_experiment(
-                image,
-                cfg_ours,
-                ours_dir,
-                image_id=image_id,
-                save_visuals=save_visuals,
-                save_checkpoint=save_checkpoint,
-                eval_metrics=True,
-            )
-            rows.append(_row("ours", image_id, "success", ours_dir, metrics=ours_row))
-            method_outputs["ours"] = load_baseline_output(ours_dir, "ours", image_id)
+            if ours_output_dir is not None:
+                # 允许先批量跑 Ours，再在 comparison 中直接读取标准输出，避免重复训练主方法。
+                resolved = _resolve_ours_output_dir(ours_output_dir, image_id)
+                pred = load_baseline_output(resolved, "ours", image_id)
+                pred = _resize_prediction_to_masks(pred, masks)
+                metrics = evaluate_baseline_prediction(pred, masks, image=image)
+                rows.append(_row("ours", image_id, "success", resolved, metrics=metrics))
+                method_outputs["ours"] = pred
+            else:
+                cfg_ours = copy.deepcopy(cfg)
+                cfg_ours.setdefault("frontend", {})
+                cfg_ours["frontend"]["mask_source"] = "file"
+                cfg_ours["frontend"]["mask_path"] = str(shared_mask_path)
+                ours_row = run_single_image_experiment(
+                    image,
+                    cfg_ours,
+                    ours_dir,
+                    image_id=image_id,
+                    save_visuals=save_visuals,
+                    save_checkpoint=save_checkpoint,
+                    eval_metrics=True,
+                    frontend_cache_dir=frontend_cache_dir,
+                    use_frontend_cache=use_frontend_cache,
+                    save_frontend_cache=save_frontend_cache,
+                )
+                rows.append(_row("ours", image_id, "success", ours_dir, metrics=ours_row))
+                method_outputs["ours"] = load_baseline_output(ours_dir, "ours", image_id)
         except Exception as exc:
             ours_dir.mkdir(parents=True, exist_ok=True)
             err = _row("ours", image_id, "failed", ours_dir, error=str(exc))
@@ -159,6 +206,11 @@ def run_comparison_for_image(
 
 
 def _load_record_masks_or_fallback(image: torch.Tensor, cfg: dict, record) -> torch.Tensor:
+    if cfg.get("frontend_cache", {}).get("use_cache", False):
+        cache_dir = getattr(record, "metadata", {}).get("frontend_cache_dir") if record is not None else None
+        if cache_dir:
+            from shapesplat.cache.frontend_cache import load_frontend_output
+            return load_frontend_output(cache_dir, image).masks
     mask_path = getattr(record, "metadata", {}).get("mask_path") if record is not None else None
     source = cfg.get("frontend", {}).get("mask_source", "sam")
     if mask_path:
@@ -180,6 +232,8 @@ def run_comparison_dataset(
     run_independent_gaussian: bool = False,
     save_visuals: bool = True,
     save_checkpoint: bool = False,
+    save_frontend_cache: bool = False,
+    ours_output_dir: str | Path | None = None,
 ) -> list[dict]:
     """在 manifest dataset 上批量运行 same-mask comparison。
 
@@ -215,6 +269,10 @@ def run_comparison_dataset(
                     run_independent_gaussian=run_independent_gaussian,
                     save_visuals=save_visuals,
                     save_checkpoint=save_checkpoint,
+                    frontend_cache_dir=getattr(item.get("record"), "metadata", {}).get("frontend_cache_dir"),
+                    use_frontend_cache=bool(cfg.get("frontend_cache", {}).get("use_cache", False)),
+                    save_frontend_cache=save_frontend_cache or bool(cfg.get("frontend_cache", {}).get("save_cache", False)),
+                    ours_output_dir=ours_output_dir,
                 )
             )
         except Exception as exc:

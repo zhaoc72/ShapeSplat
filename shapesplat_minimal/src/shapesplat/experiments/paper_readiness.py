@@ -3,6 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from shapesplat.experiments.paper_runner import load_paper_profile
+from shapesplat.datasets.benchmark.validator_v2 import validate_benchmark_v2
 
 
 def check_paper_ready(profile_path: str | Path, out_dir: str | Path) -> dict:
@@ -38,11 +39,22 @@ def check_paper_ready(profile_path: str | Path, out_dir: str | Path) -> dict:
                 errors.append(f"{key} missing: {profile[key]}")
 
     manifest = profile.get("manifest")
+    if profile.get("benchmark_manifest"):
+        manifest = profile.get("benchmark_manifest")
     if manifest:
         manifest_ok = Path(manifest).exists() or bool(profile.get("create_if_missing"))
         checks.append({"name": "manifest", "ok": manifest_ok, "path": manifest})
         if not manifest_ok:
             errors.append(f"manifest missing: {manifest}")
+        elif Path(manifest).exists() and profile.get("benchmark_schema") == "v2":
+            # benchmark v2 readiness 会检查协议和可选字段；optional GT 缺失只作为 warning。
+            bench = validate_benchmark_v2(manifest, check_optional_gt=True, check_cache=bool(profile.get("use_frontend_cache")))
+            checks.append({"name": "benchmark_v2", "ok": bench["valid"], "num_rows": bench["num_rows"], "num_failed": bench["num_failed"]})
+            warnings.extend(bench.get("warnings", []))
+            for row in bench.get("rows", []):
+                warnings.extend([f"{row.get('image_id')}: {w}" for w in row.get("warnings", [])[:3]])
+            if not bench["valid"]:
+                errors.append(f"benchmark v2 invalid: {manifest}")
 
     scripts = [
         "scripts/run_comparison.py",

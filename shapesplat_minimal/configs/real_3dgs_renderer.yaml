@@ -1,0 +1,75 @@
+# 真实 3D Gaussian Splatting renderer adapter 的 smoke-test 配置。
+# 当前不强制安装 CUDA renderer；没有 diff_gaussian / gsplat 时会 fallback 到 soft renderer。
+seed: 7
+device: auto
+
+image:
+  size: 64
+  input_path: null
+
+frontend:
+  mask_source: sam
+  sam_backend: stub
+  dino_backend: stub
+  depth_backend: stub
+  max_num_objects: 4
+  min_area_ratio: 0.002
+  mask_conf_threshold: 0.2
+
+camera:
+  focal_scale: 1.2
+  z_near: 1.0
+  z_far: 3.2
+
+gaussians:
+  visible_min: 16
+  visible_max: 32
+  visible_density: 0.01
+  hidden_base: 8
+  init_log_scale: -3.5
+  init_opacity: 0.25
+  hidden_opacity: 0.08
+  use_hidden: true
+
+retrieval:
+  top_k: 3
+  confidence_low: 0.15
+  confidence_high: 0.80
+  support_sigma: 0.18
+  use_multi_view_descriptors: true
+  temperature: 0.07
+
+shape_bank:
+  backend: toy
+  descriptor_dim: null
+  num_points: 512
+  fallback_to_toy: true
+  random_descriptor_if_missing: true
+  descriptor_seed: 123
+
+renderer:
+  backend: auto
+  fallback_to_soft: true
+  real_renderer_module: null
+  real_renderer_class: null
+  real_3dgs:
+    library: auto
+    use_native_contributions: false
+    object_contribution_mode: object_wise_alpha
+    render_objects_individually: true
+    background_color: [1.0, 1.0, 1.0]
+    sh_degree: 0
+    near: 0.01
+    far: 100.0
+    scale_modifier: 1.0
+    debug_save_intermediate: false
+  beta_depth: 1.5
+  min_sigma_px: 1.0
+  max_sigma_px: 4.0
+  ownership_eps: 1.0e-6
+
+training:
+  visible_warmup_iters: 1
+  hidden_prior_iters: 1
+  joint_ownership_iters: 1
+  edit_finetune_iters: 1

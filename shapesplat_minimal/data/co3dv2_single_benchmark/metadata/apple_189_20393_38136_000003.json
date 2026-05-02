@@ -1,0 +1,12 @@
+{
+  "image_id": "apple_189_20393_38136_000003",
+  "category": "apple",
+  "sequence_name": "189_20393_38136",
+  "frame_index": 3,
+  "source_image_path": "D:\\projects\\datasets\\co3dv2_single\\apple\\189_20393_38136\\images\\frame000004.jpg",
+  "source_mask_path": "D:\\projects\\datasets\\co3dv2_single\\apple\\189_20393_38136\\masks\\frame000004.png",
+  "source_depth_path": null,
+  "source_pointcloud_path": "D:\\projects\\datasets\\co3dv2_single\\apple\\189_20393_38136\\pointcloud.ply",
+  "is_co3dv2_single": true,
+  "notes": "CO3Dv2 single is object-centric real-image diagnostic; mask is visible foreground."
+}

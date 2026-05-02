@@ -7,6 +7,8 @@ import subprocess
 import sys
 from pathlib import Path
 
+from shapesplat.runtime.env import collect_runtime_environment
+
 
 def collect_environment_info() -> dict:
     """收集轻量环境信息，用于复现实验运行环境。"""
@@ -32,6 +34,8 @@ def collect_environment_info() -> dict:
                 "device_count": int(torch.cuda.device_count()),
             }
         )
+        # 中文注释：run metadata 中记录更完整的 CUDA / conda / nvidia-smi 摘要，便于复现实验设备。
+        info["runtime_environment"] = collect_runtime_environment()
     except Exception as exc:
         info.update({"torch_version": None, "cuda_available": False, "cuda_version": None, "device_count": 0, "torch_error": str(exc)})
     return info
@@ -57,4 +61,3 @@ def try_collect_git_info(root: str | Path = ".") -> dict:
         }
     except Exception as exc:
         return {"available": False, "error": str(exc)}
-

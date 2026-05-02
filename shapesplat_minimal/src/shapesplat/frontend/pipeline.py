@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any, Dict
 
 import torch
@@ -34,21 +35,39 @@ def build_frontend(
 ) -> FrontEndOutput:
     """构建 frozen front-end 输出。
 
-    SAM/file mask source 负责 where：retained visible instance masks；
-    DINO backend 负责 what：dense features 和 mask-guided descriptors；
-    Depth backend 只提供 weak initialization/layout cue。
-
-    file mask 模式用于 same-mask protocol，所有方法共享同一组 visible masks。
-    默认 mask_source=sam 时行为与旧版本一致。
+    cache 模式只读取/保存 masks、descriptors 和 depth 等 front-end outputs；
+    后续 Gaussian optimization 仍然正常运行。cache 中的 masks 是 retained
+    visible masks，不是 amodal masks。
     """
+
     device = torch.device(cfg["device"])
     image = image.to(device)
+    cache_cfg = cfg.get("frontend_cache", {})
+
+    if cache_dir is None and record is not None:
+        cache_dir = getattr(record, "metadata", {}).get("frontend_cache_dir")
+    if cache_dir is None and record is not None and cache_cfg.get("cache_root"):
+        cache_dir = Path(cache_cfg["cache_root"]) / getattr(record, "image_id", "image")
+    if not use_cache and cache_cfg.get("use_cache", False) and cache_dir is not None:
+        use_cache = True
+    if not save_cache and cache_cfg.get("save_cache", False) and cache_dir is not None:
+        save_cache = True
+
     if use_cache and cache_dir is not None:
         from shapesplat.cache.frontend_cache import frontend_cache_exists, load_frontend_output
+        from shapesplat.cache.validate_cache import validate_frontend_cache_dir
 
-        # 真实 backend 批量实验时优先读取缓存，避免重复运行 SAM / DINO / Depth。
         if frontend_cache_exists(cache_dir):
-            return load_frontend_output(cache_dir, image)
+            if cache_cfg.get("validate_on_load", True):
+                validation = validate_frontend_cache_dir(cache_dir, image_hw=tuple(image.shape[-2:]))
+                if validation["valid"]:
+                    return load_frontend_output(cache_dir, image)
+                if not cache_cfg.get("fallback_to_compute", True):
+                    raise RuntimeError(f"frontend cache invalid: {validation}")
+            else:
+                return load_frontend_output(cache_dir, image)
+        elif not cache_cfg.get("fallback_to_compute", True):
+            raise FileNotFoundError(f"frontend cache missing or incomplete: {cache_dir}")
 
     mask_set = get_masks_for_image(image, cfg, record=record)
 
@@ -76,7 +95,7 @@ def build_frontend(
             front,
             cache_dir,
             image_id=image_id,
-            save_dino_features=bool(cfg.get("frontend_cache", {}).get("save_dino_features", False)),
+            save_dino_features=bool(cache_cfg.get("save_dino_features", False)),
             save_visuals=True,
         )
     return front

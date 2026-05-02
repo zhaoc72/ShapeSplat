@@ -95,3 +95,50 @@ Fallback 规则：
 - 真实 backend 不可用时 fallback 到 `stub` / `soft`；
 - `real` 表示强制真实 backend，失败时会报错；
 - 真实 backend 接入失败不应影响默认 minimal pipeline。
+## Real 3DGS Renderer Adapter
+
+默认仍使用 soft renderer：
+
+```yaml
+renderer:
+  backend: soft
+```
+
+本地检查真实 3D Gaussian Splatting renderer 时可以使用 auto：
+
+```yaml
+renderer:
+  backend: auto
+  fallback_to_soft: true
+  real_3dgs:
+    library: auto
+```
+
+检查命令：
+
+```bash
+python scripts/check_real_renderer.py --config configs/real_3dgs_renderer.yaml --backend auto --out outputs/check_real_renderer --allow-fallback
+```
+
+真实 renderer 必须输出标准 `RenderOutput`：
+- `rgb`
+- `alpha`
+- `depth`
+- `contributions`
+- `ownership`
+- `bg_ownership`
+
+如果真实 renderer 不支持 native object contributions，adapter 预留 `object_wise_alpha` fallback：逐 object 渲染 alpha，再归一化得到 ownership。该策略较慢，但能保持 ShapeSplat++ 的 object ownership supervision 协议。
+
+当前 artifact 不强制安装 `diff-gaussian-rasterization` / `gsplat`。用户后续可以在 `Real3DGSRendererAdapter._render_with_xxx` 中接入本地 CUDA renderer。
+## Windows + RTX 5090 Runtime
+
+Backend availability and CUDA runtime are separate checks. A renderer may fallback to soft even when CUDA works, and CUDA may fail even when `torch.cuda.is_available()` is true.
+
+```powershell
+python scripts/print_gpu_info.py
+python scripts/check_gpu_runtime.py --config configs/local_windows_rtx5090.yaml --device cuda --require-cuda --out outputs/check_gpu_runtime
+python scripts/run_gpu_smoke_experiment.py --config configs/local_windows_rtx5090.yaml --out outputs/gpu_smoke --require-cuda --iters 2
+```
+
+Use `--device cuda --require-cuda` for GPU-required experiments. Use `--allow-cpu-fallback` only when CPU fallback is intentional for debugging.

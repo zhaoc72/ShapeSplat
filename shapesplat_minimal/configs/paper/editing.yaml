@@ -3,6 +3,10 @@ profile: editing
 description: "Paper editing evaluation profile."
 config: configs/editing.yaml
 manifest: examples/example_dataset/manifest.csv
+benchmark_schema: v2
+benchmark_manifest: null
+use_frontend_cache: false
+frontend_cache_manifest: null
 out_name: editing
 max_images: 3
 max_objects: 2
@@ -11,3 +15,7 @@ ops:
   - translate
   - scale
   - isolate
+frontend_cache:
+  use_cache: false
+  cache_manifest: null
+  cache_root: null

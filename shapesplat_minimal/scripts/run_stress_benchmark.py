@@ -21,6 +21,7 @@ from shapesplat.baselines.load_outputs import load_baseline_output
 from shapesplat.benchmarks.stress_metadata import load_stress_metadata
 from shapesplat.benchmarks.stress_metrics import compute_stress_metrics
 from shapesplat.benchmarks.stress_report import save_stress_summary
+from shapesplat.cache.attach import apply_frontend_cache_config, attach_cache_to_dataset
 from shapesplat.config import load_config
 from shapesplat.data.image_io import load_image
 from shapesplat.datasets.manifest import load_manifest
@@ -53,13 +54,33 @@ def run_stress_benchmark(
     run_comparison: bool = False,
     run_dummy_baselines: bool = True,
     save_visuals: bool = True,
+    use_frontend_cache: bool = False,
+    frontend_cache_root: str | Path | None = None,
+    frontend_cache_manifest: str | Path | None = None,
+    save_frontend_cache: bool = False,
+    frontend_cache_out: str | Path | None = None,
 ) -> list[dict]:
     """运行 stress benchmark；单张失败会记录 error 并继续。"""
 
     cfg = load_config(config_path)
     cfg.setdefault("frontend", {})["mask_source"] = "file"
+    apply_frontend_cache_config(
+        cfg,
+        use_cache=use_frontend_cache,
+        cache_root=frontend_cache_root,
+        cache_manifest=frontend_cache_manifest,
+        save_cache=save_frontend_cache,
+        cache_out=frontend_cache_out,
+    )
     seed_everything(int(cfg.get("seed", 0)))
     records = load_manifest(manifest_path)
+    # stress manifest 也可以携带 frontend_cache_dir，便于复用真实前端缓存。
+    cache_cfg = cfg.get("frontend_cache", {})
+    attach_cache_to_dataset(
+        records,
+        cache_manifest=frontend_cache_manifest or cache_cfg.get("cache_manifest"),
+        cache_root=frontend_cache_root or frontend_cache_out or cache_cfg.get("cache_root"),
+    )
     if max_images is not None:
         records = records[: max(0, int(max_images))]
     out = Path(out_dir)
@@ -83,6 +104,8 @@ def run_stress_benchmark(
                     run_dummy_baselines=run_dummy_baselines,
                     save_visuals=save_visuals,
                     save_checkpoint=False,
+                    frontend_cache_dir=record.metadata.get("frontend_cache_dir"),
+                    use_frontend_cache=use_frontend_cache or bool(cfg.get("frontend_cache", {}).get("use_cache", False)),
                 )
                 for row in comp_rows:
                     if row.get("status") != "success":
@@ -110,6 +133,9 @@ def run_stress_benchmark(
                     save_visuals=save_visuals,
                     save_checkpoint=False,
                     eval_metrics=True,
+                    frontend_cache_dir=record.metadata.get("frontend_cache_dir"),
+                    use_frontend_cache=use_frontend_cache or bool(cfg.get("frontend_cache", {}).get("use_cache", False)),
+                    save_frontend_cache=save_frontend_cache or bool(cfg.get("frontend_cache", {}).get("save_cache", False)),
                 )
                 stress = compute_stress_metrics(_render_from_output(ours_dir, masks), masks, meta)
                 rows.append({**row, **stress, "method": "ours", "subset": meta.subset})
@@ -132,6 +158,11 @@ def main() -> None:
     parser.add_argument("--run-comparison", action="store_true")
     parser.add_argument("--no-dummy-baselines", action="store_true")
     parser.add_argument("--save-visuals", action="store_true")
+    parser.add_argument("--use-frontend-cache", action="store_true")
+    parser.add_argument("--frontend-cache-root", default=None)
+    parser.add_argument("--frontend-cache-manifest", default=None)
+    parser.add_argument("--save-frontend-cache", action="store_true")
+    parser.add_argument("--frontend-cache-out", default=None)
     parser.add_argument("--no-run-metadata", action="store_true")
     parser.add_argument("--registry", default="runs/run_registry.jsonl")
     args = parser.parse_args()
@@ -143,6 +174,11 @@ def main() -> None:
         run_comparison=args.run_comparison,
         run_dummy_baselines=not args.no_dummy_baselines,
         save_visuals=args.save_visuals,
+        use_frontend_cache=args.use_frontend_cache,
+        frontend_cache_root=args.frontend_cache_root,
+        frontend_cache_manifest=args.frontend_cache_manifest,
+        save_frontend_cache=args.save_frontend_cache,
+        frontend_cache_out=args.frontend_cache_out,
     )
     if not args.no_run_metadata:
         try:
@@ -153,4 +189,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-

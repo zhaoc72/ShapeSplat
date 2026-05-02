@@ -1,0 +1,30 @@
+# 正式 benchmark manifest v2 的默认配置模板。
+# 该配置不要求 optional geometry GT；普通 same-mask 实验只需要 image + fixed visible masks。
+seed: 123
+device: auto
+
+image:
+  size: 128
+
+frontend:
+  mask_source: file
+  mask_resize_mode: nearest
+  mask_min_area_ratio: 0.002
+  sam_backend: stub
+  dino_backend: stub
+  depth_backend: stub
+
+frontend_cache:
+  use_cache: false
+  cache_manifest: null
+  fallback_to_compute: true
+  validate_on_load: true
+
+benchmark:
+  schema_version: v2
+  require_masks: true
+  optional_geometry: true
+  validate_cache: false
+
+renderer:
+  backend: soft

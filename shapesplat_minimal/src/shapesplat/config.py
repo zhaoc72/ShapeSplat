@@ -7,10 +7,13 @@ from typing import Any, Dict
 import torch
 import yaml
 
+from shapesplat.runtime.device import DEFAULT_RUNTIME, resolve_runtime_device
+
 
 DEFAULT_CONFIG: Dict[str, Any] = {
     "seed": 7,
     "device": "auto",
+    "runtime": dict(DEFAULT_RUNTIME),
     "image": {"size": 64, "input_path": None},
     "frontend": {
         "mask_source": "sam",
@@ -60,6 +63,15 @@ DEFAULT_CONFIG: Dict[str, Any] = {
         "min_area_ratio": 0.002,
         "mask_conf_threshold": 0.2,
     },
+    "frontend_cache": {
+        "use_cache": False,
+        "save_cache": False,
+        "cache_root": None,
+        "cache_manifest": None,
+        "fallback_to_compute": True,
+        "save_dino_features": False,
+        "validate_on_load": True,
+    },
     "camera": {"focal_scale": 1.2, "z_near": 1.0, "z_far": 3.2},
     "gaussians": {
         "visible_min": 32,
@@ -96,9 +108,22 @@ DEFAULT_CONFIG: Dict[str, Any] = {
     },
     "renderer": {
         "backend": "soft",
+        "real_backend": "auto",
         "real_renderer_module": None,
         "real_renderer_class": None,
         "fallback_to_soft": True,
+        "real_3dgs": {
+            "library": "auto",
+            "use_native_contributions": False,
+            "object_contribution_mode": "object_wise_alpha",
+            "render_objects_individually": True,
+            "background_color": [1.0, 1.0, 1.0],
+            "sh_degree": 0,
+            "near": 0.01,
+            "far": 100.0,
+            "scale_modifier": 1.0,
+            "debug_save_intermediate": False,
+        },
         "beta_depth": 1.5,
         "min_sigma_px": 1.0,
         "max_sigma_px": 4.0,
@@ -144,6 +169,15 @@ DEFAULT_CONFIG: Dict[str, Any] = {
         "use_edit_consistency": True,
         "use_layout_loss": True,
     },
+    "ours": {
+        "variant": "full",
+        "max_objects": None,
+        "save_ownership_npy": True,
+        "save_diagnostics": True,
+        "save_checkpoint": False,
+        "save_visuals": True,
+        "save_pred_pointcloud": False,
+    },
     "ablation_name": "full",
 }
 
@@ -163,20 +197,33 @@ def merge_config(default: Dict[str, Any], yaml_config: Dict[str, Any]) -> Dict[s
     return out
 
 
-def resolve_device(device_str: str) -> torch.device:
+def resolve_device(device_str: str | dict) -> torch.device:
     """解析 device 配置。
 
     device: auto 时优先使用 CUDA；没有 GPU 时回退 CPU，保证普通 Python+PyTorch 环境也能跑通。
     """
-    if device_str == "auto":
-        return torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    return torch.device(device_str)
+    # 中文注释：新配置优先使用 runtime.device；旧代码传入字符串时仍可工作。
+    info = resolve_runtime_device(device_str)
+    if info.error_messages:
+        raise RuntimeError("; ".join(info.error_messages))
+    return info.device
 
 
-def load_config(path: str | Path) -> Dict[str, Any]:
+def load_config(path: str | Path, runtime_overrides: dict | None = None) -> Dict[str, Any]:
     """读取 yaml 并合并默认配置。"""
     with open(path, "r", encoding="utf-8") as f:
         user_cfg = yaml.safe_load(f) or {}
     cfg = merge_config(DEFAULT_CONFIG, user_cfg)
-    cfg["device"] = str(resolve_device(cfg["device"]))
+    if runtime_overrides:
+        # 中文注释：CLI 需要在设备解析前覆盖 runtime，否则 local cuda 模板会在无 CUDA 环境提前失败。
+        cfg["runtime"] = merge_config(cfg.get("runtime", {}), runtime_overrides)
+    # 中文注释：补齐 runtime 默认值，并让 runtime.device 优先于旧顶层 device 字段。
+    cfg["runtime"] = merge_config(dict(DEFAULT_RUNTIME), cfg.get("runtime", {}))
+    user_runtime = user_cfg.get("runtime", {}) if isinstance(user_cfg.get("runtime"), dict) else {}
+    if "device" not in user_runtime and not (runtime_overrides and "device" in runtime_overrides):
+        cfg["runtime"]["device"] = cfg.get("device", cfg["runtime"].get("device", "auto"))
+    info = resolve_runtime_device(cfg)
+    if info.error_messages:
+        raise RuntimeError("; ".join(info.error_messages))
+    cfg["device"] = str(info.device)
     return cfg

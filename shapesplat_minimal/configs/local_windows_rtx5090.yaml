@@ -1,0 +1,35 @@
+# Windows + RTX 5090 本地 GPU 运行模板。
+# 中文注释：本配置不会安装 PyTorch/CUDA；用户应先运行 check_gpu_runtime.py 确认当前 conda 环境支持 RTX 5090。
+device: cuda
+
+runtime:
+  device: cuda
+  cuda_device: 0
+  prefer_gpu: true
+  allow_cpu_fallback: false
+  require_cuda_for_experiments: true
+  mixed_precision: false
+  amp_dtype: float16
+  benchmark_cudnn: true
+  deterministic: false
+  empty_cache_between_images: true
+  max_gpu_memory_fraction: null
+  warn_if_cuda_unavailable: true
+  fail_if_cuda_requested_but_unavailable: true
+  log_gpu_memory: true
+
+frontend:
+  sam_backend: auto
+  dino_backend: auto
+  depth_backend: auto
+
+renderer:
+  backend: auto
+  fallback_to_soft: true
+
+training:
+  visible_warmup_iters: 2
+  hidden_prior_iters: 0
+  joint_ownership_iters: 0
+  edit_finetune_iters: 0
+  log_every: 1

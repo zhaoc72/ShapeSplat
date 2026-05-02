@@ -107,6 +107,43 @@ frontend:
   sam3_checkpoint: path/to/checkpoint
 ```
 
+## CO3Dv2 Single Subset Diagnostics
+
+CO3Dv2 single subset is supported as a local real-image diagnostic dataset. It is usually object-centric with one visible foreground mask per frame, so this path is not treated as the multi-object occlusion benchmark. ShapeSplat++ uses the CO3D mask as a fixed retained visible mask for same-mask diagnostics.
+
+Example local root:
+
+```powershell
+D:\projects\datasets\co3dv2_single
+```
+
+Inspect the folder structure:
+
+```powershell
+python scripts/inspect_co3dv2_single.py --root D:\projects\datasets\co3dv2_single --out outputs/inspect_co3dv2_single
+```
+
+Convert a small subset first:
+
+```powershell
+python scripts/convert_co3dv2_single.py --root D:\projects\datasets\co3dv2_single --out data/co3dv2_single_benchmark --max-categories 3 --max-sequences 2 --max-frames-per-sequence 5 --copy-files --overwrite
+```
+
+Validate and run diagnostics:
+
+```powershell
+python scripts/validate_benchmark_v2.py --manifest data/co3dv2_single_benchmark/manifest.csv --config configs/final_benchmark.yaml --out outputs/validate_co3dv2_single
+python scripts/run_co3dv2_diagnostics.py --manifest data/co3dv2_single_benchmark/manifest.csv --config configs/final_ours.yaml --out outputs/co3dv2_diagnostics --max-images 20 --generate-report
+```
+
+Preset:
+
+```powershell
+python scripts/run_experiment.py --preset co3dv2_cache --out outputs/exp_co3dv2_cache
+```
+
+The converter does not require PyTorch3D or the official CO3D package. It tries lightweight `.jgz` annotations first and falls back to folder scanning. Depth, camera, and pointcloud fields are optional; geometry metrics should only be reported after a clear pointcloud conversion and alignment protocol is fixed.
+
 检查 SAM backend：
 
 ```bash
@@ -869,3 +906,262 @@ outputs/real_integration_smoke/integration_report.md
 ```
 
 If no real models are configured, `auto` mode falls back to stub / soft backends and should still complete. This smoke test validates local integration plumbing; it is not a final paper-quality experiment.
+
+## Frontend Cache / 前端缓存
+
+v2.5 lets the main experiment runners reuse cached frontend outputs. This is useful because real SAM3 / DINOv3 / Depth inference can be slow, while comparison, ablation, stress, editing, and paper experiments often reuse the same masks, descriptors, and depth.
+
+Cache an example dataset:
+
+```bash
+python scripts/cache_frontend_outputs.py --config configs/local_real_frontend.yaml --manifest examples/example_dataset/manifest.csv --out-cache outputs/frontend_cache --max-images 3 --write-manifest outputs/frontend_cache/cache_manifest.csv --update-dataset-manifest outputs/frontend_cache/manifest_with_cache.csv --validate
+```
+
+Validate the cache:
+
+```bash
+python scripts/validate_frontend_cache.py --cache-root outputs/frontend_cache --out outputs/frontend_cache_validation
+```
+
+Convert cached masks into a same-mask dataset:
+
+```bash
+python scripts/cache_to_same_mask_dataset.py --image-manifest examples/example_dataset/manifest.csv --cache-manifest outputs/frontend_cache/cache_manifest.csv --out data/cached_same_mask_dataset --copy-images --overwrite
+```
+
+Run comparison with the cached frontend outputs:
+
+```bash
+python scripts/run_comparison.py --config configs/cache_experiment.yaml --manifest data/cached_same_mask_dataset/manifest.csv --out outputs/cached_comparison --max-images 3 --use-frontend-cache --frontend-cache-manifest outputs/frontend_cache/cache_manifest.csv
+```
+
+Or use the preset:
+
+```bash
+python scripts/run_experiment.py --preset cache_frontend --out outputs/exp_cache_frontend
+```
+
+The cache stores frontend outputs only: retained visible masks, descriptors, depth, and small visualizations. It is not a trained model output, and Gaussian optimization still runs normally.
+
+## Real 3DGS Renderer Adapter / 真实 3D Gaussian Renderer 适配
+
+The default renderer is still the CPU-friendly soft renderer:
+
+```yaml
+renderer:
+  backend: soft
+```
+
+For local integration checks you can use auto mode. It tries a real 3DGS adapter first, then falls back to soft when no CUDA renderer is installed:
+
+```yaml
+renderer:
+  backend: auto
+  fallback_to_soft: true
+  real_3dgs:
+    library: auto
+```
+
+Check the real renderer adapter and fallback path:
+
+```bash
+python scripts/check_real_renderer.py --config configs/real_3dgs_renderer.yaml --backend auto --out outputs/check_real_renderer --allow-fallback
+```
+
+A real renderer must return the standard `RenderOutput`: `rgb`, `alpha`, `depth`, `contributions`, `ownership`, and `bg_ownership`. If the CUDA renderer cannot provide native object contributions, the adapter reserves an object-wise alpha fallback strategy: render each object separately, stack `alpha_n`, and normalize ownership maps. This is slower, but keeps ShapeSplat++ ownership supervision compatible.
+
+This project does not require `diff-gaussian-rasterization` or `gsplat`; users can add those locally later.
+
+## Final Benchmark Format / 正式 Benchmark 协议
+
+v3.0 adds a benchmark manifest v2 format for paper-ready same-mask experiments:
+
+```text
+benchmark_root/
+  images/
+  masks/
+  metadata/
+  depth/                 optional
+  cameras/               optional
+  gt_pointclouds/         optional
+  gt_meshes/              optional
+  frontend_cache/         optional
+  manifest.csv
+  splits.json
+  benchmark_info.json
+```
+
+Required manifest fields are `image_id`, `image_path`, `mask_path`, and `split`. Optional fields include metadata, source dataset, GT geometry/depth/camera paths, frontend cache bindings, and diagnostic tags such as occlusion or same-category flags.
+
+Convert a generic folder:
+
+```bash
+python scripts/convert_benchmark.py --converter generic_folder --src examples/example_dataset --out data/example_benchmark_v2 --source-dataset example --overwrite
+```
+
+Validate benchmark v2:
+
+```bash
+python scripts/validate_benchmark_v2.py --manifest data/example_benchmark_v2/manifest.csv --config configs/final_benchmark.yaml --out outputs/benchmark_v2_validation
+```
+
+Bind frontend cache:
+
+```bash
+python scripts/bind_cache_to_benchmark.py --manifest data/example_benchmark_v2/manifest.csv --cache-manifest outputs/frontend_cache/cache_manifest.csv --out-manifest data/example_benchmark_v2/manifest_with_cache.csv
+```
+
+Summarize:
+
+```bash
+python scripts/summarize_benchmark.py --manifest data/example_benchmark_v2/manifest.csv --out outputs/benchmark_summary
+```
+
+GSO / Objaverse / Pix3D / CO3D converters are templates for local adaptation. Formal paper experiments should use fixed manifests and fixed visible masks.
+
+## Ours Reconstruction Core Runner
+
+The Ours core runner runs ShapeSplat++ directly on a benchmark v2 manifest and saves outputs that are compatible with the baseline protocol.
+
+Check readiness:
+
+```powershell
+python scripts/check_ours_core_ready.py --config configs/final_ours.yaml --manifest data/example_benchmark_v2/manifest.csv --out outputs/check_ours_core_ready
+```
+
+Run Ours on a benchmark:
+
+```powershell
+python scripts/run_ours_benchmark.py --config configs/final_ours.yaml --manifest data/example_benchmark_v2/manifest.csv --out outputs/ours_benchmark --max-images 3
+```
+
+Run Ours variants:
+
+```powershell
+python scripts/run_ours_variants.py --config configs/final_ours.yaml --variants configs/ours_variants.yaml --manifest data/example_benchmark_v2/manifest.csv --out outputs/ours_variants --variant full --variant visible_only --max-images 3
+```
+
+Use frontend cache:
+
+```powershell
+python scripts/run_ours_benchmark.py --config configs/final_ours.yaml --manifest data/example_benchmark_v2/manifest_with_cache.csv --out outputs/ours_benchmark_cached --use-frontend-cache --frontend-cache-manifest outputs/frontend_cache_v2/cache_manifest.csv --max-images 3
+```
+
+Notes:
+- If the run still uses stub / toy / soft fallback, the result is only for debugging.
+- Final submission experiments should run `--strict-ready` and explicitly configure real frontend cache, prepared shape bank, and renderer settings.
+- Ours outputs include `render_final.png`, `alpha_final.png`, `ownership.npy`, `metrics.json`, `output_spec.json`, `reconstruction_meta.json`, and `diagnostics.json`.
+
+## Final Baseline and Geometry Metrics
+
+Run Ours and export a lightweight predicted pointcloud:
+
+```powershell
+python scripts/run_ours_benchmark.py --config configs/final_ours.yaml --manifest data/example_benchmark_v2/manifest.csv --out outputs/ours_benchmark --max-images 3
+```
+
+Evaluate one method output root:
+
+```powershell
+python scripts/evaluate_method_outputs.py --method ours_full --outputs outputs/ours_benchmark --manifest data/example_benchmark_v2/manifest.csv --config configs/final_ours.yaml --out outputs/eval_ours_full --max-images 3
+```
+
+Run final comparison:
+
+```powershell
+python scripts/run_final_comparison.py --manifest data/example_benchmark_v2/manifest.csv --methods configs/method_catalog.yaml --outputs-config configs/final_method_outputs.yaml --config configs/final_ours.yaml --out outputs/final_comparison --max-images 3
+```
+
+Export final tables:
+
+```powershell
+python scripts/export_final_tables.py --summary outputs/final_comparison/final_method_summary.json --out outputs/final_comparison/tables
+```
+
+Notes:
+- Chamfer/F-score are computed only when both `pred_pointcloud.npy` and manifest GT pointcloud fields exist.
+- Real-image diagnostics do not report geometry without GT.
+- Real external baselines are disabled in `configs/method_catalog.yaml` until users provide outputs that satisfy the baseline protocol.
+
+## Final Paper Experiments / 最终论文实验
+
+The final paper runner is a top-level orchestration layer. It validates the benchmark, runs Ours, variants, internal baselines, final comparison, stress/editing checks, table export, report generation, and readiness summaries.
+
+Check final readiness:
+
+```powershell
+python scripts/check_final_paper_ready.py --profile configs/paper/final_debug.yaml --out outputs/check_final_ready
+```
+
+Dry run the final plan:
+
+```powershell
+python scripts/run_final_paper.py --profile configs/paper/final_debug.yaml --out outputs/final_paper_debug --dry-run
+```
+
+Run the final debug pipeline:
+
+```powershell
+python scripts/run_final_paper.py --profile configs/paper/final_debug.yaml --out outputs/final_paper_debug --generate-tables --generate-report
+```
+
+Export all final tables:
+
+```powershell
+python scripts/export_all_final_tables.py --root outputs/final_paper_debug --out outputs/final_paper_debug/tables
+```
+
+Generate the final report:
+
+```powershell
+python scripts/generate_final_report.py --root outputs/final_paper_debug --out outputs/final_paper_debug/report --title "ShapeSplat++ Final Paper Report"
+```
+
+Run through the experiment preset:
+
+```powershell
+python scripts/run_experiment.py --preset final_paper_debug --out outputs/exp_final_paper_debug
+```
+
+Notes:
+- `final_debug` is a smoke test, not a submission result.
+- Submission runs should replace the example benchmark, frontend cache, shape bank, renderer, and external baseline output paths with real experiment artifacts.
+- `--strict-ready` is intended to catch remaining stub / toy / soft fallback settings before final reporting.
+
+## Windows + RTX 5090 GPU Runtime
+
+Activate the conda environment first:
+
+```powershell
+conda activate shapesplat
+```
+
+Print PyTorch / CUDA / GPU information:
+
+```powershell
+python scripts/print_gpu_info.py
+```
+
+Check CUDA runtime compatibility:
+
+```powershell
+python scripts/check_gpu_runtime.py --config configs/local_windows_rtx5090.yaml --device cuda --require-cuda --out outputs/check_gpu_runtime
+```
+
+Run a tiny GPU smoke experiment:
+
+```powershell
+python scripts/run_gpu_smoke_experiment.py --config configs/local_windows_rtx5090.yaml --out outputs/gpu_smoke --require-cuda --iters 2
+```
+
+Run the PowerShell one-shot debug:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts/run_windows_gpu_paper_debug.ps1
+```
+
+Notes:
+- The project does not install PyTorch, CUDA, or NVIDIA drivers automatically.
+- RTX 5090 needs a PyTorch CUDA build that supports the GPU architecture. `torch.cuda.is_available()` is not enough; `check_gpu_runtime.py` runs a real CUDA matmul/backward smoke test.
+- If `--device cuda` or `--require-cuda` is used, CUDA failure is reported clearly. CPU fallback happens only when `--allow-cpu-fallback` or `runtime.allow_cpu_fallback=true` is explicit.
+- `renderer.backend=auto` can still fallback to the soft renderer; this is reported separately from CUDA device availability.

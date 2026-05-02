@@ -1,0 +1,12 @@
+{
+  "image_id": "backpack_537_78249_152122_000000",
+  "category": "backpack",
+  "sequence_name": "537_78249_152122",
+  "frame_index": 0,
+  "source_image_path": "D:\\projects\\datasets\\co3dv2_single\\backpack\\537_78249_152122\\images\\frame000001.jpg",
+  "source_mask_path": "D:\\projects\\datasets\\co3dv2_single\\backpack\\537_78249_152122\\masks\\frame000001.png",
+  "source_depth_path": null,
+  "source_pointcloud_path": null,
+  "is_co3dv2_single": true,
+  "notes": "CO3Dv2 single is object-centric real-image diagnostic; mask is visible foreground."
+}

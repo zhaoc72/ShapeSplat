@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import importlib
 
+from shapesplat.renderer.real_3dgs_adapter import Real3DGSRendererAdapter
 from shapesplat.renderer.soft_renderer import SoftGaussianRenderer
 
 
@@ -16,10 +17,13 @@ def build_real_renderer(camera, cfg: dict):
     module_name = rcfg.get("real_renderer_module")
     class_name = rcfg.get("real_renderer_class")
     if not module_name or not class_name:
-        raise ValueError(
-            "renderer.backend=real requires renderer.real_renderer_module and "
-            "renderer.real_renderer_class. CUDA 3DGS renderer is not bundled in minimal version."
-        )
+        adapter = Real3DGSRendererAdapter(camera, cfg)
+        if not adapter.available:
+            raise RuntimeError(
+                "Real 3DGS renderer adapter is unavailable: "
+                f"{adapter.error_message}. Use renderer.backend=soft or enable fallback_to_soft."
+            )
+        return adapter
     module = importlib.import_module(module_name)
     cls = getattr(module, class_name)
     return cls(camera, cfg)
@@ -45,11 +49,16 @@ def build_renderer(camera, cfg: dict):
 
     if backend == "auto":
         try:
-            return build_real_renderer(camera, cfg)
+            renderer = build_real_renderer(camera, cfg)
+            # auto 模式适合本地真实 renderer 探测；可用时返回真实 adapter/renderer。
+            return renderer
         except Exception as exc:
             if rcfg.get("fallback_to_soft", True):
                 print(f"[Renderer warning] real renderer unavailable ({exc}); fallback to SoftGaussianRenderer.")
-                return SoftGaussianRenderer(camera, cfg)
+                renderer = SoftGaussianRenderer(camera, cfg)
+                renderer.fallback_reason = str(exc)
+                renderer.requested_backend = "auto"
+                return renderer
             raise RuntimeError(f"Failed to build real renderer backend and fallback_to_soft=false: {exc}") from exc
 
     raise ValueError(f"Unknown renderer.backend={backend!r}; expected soft/real/auto.")

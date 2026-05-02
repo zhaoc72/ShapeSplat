@@ -1,0 +1,8 @@
+{
+  "schema_version": "v2",
+  "created_at": "2026-05-02T15:08:59.418846",
+  "name": "co3dv2_single_benchmark",
+  "source_dataset": "co3dv2_single",
+  "num_images": 15,
+  "notes": "CO3Dv2 single subset converted as real-image single-object visible-mask diagnostic."
+}

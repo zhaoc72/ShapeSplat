@@ -7,3 +7,7 @@ out_name: baselines
 max_images: 3
 run_dummy: true
 run_independent_gaussian: true
+frontend_cache:
+  use_cache: false
+  cache_manifest: null
+  cache_root: null

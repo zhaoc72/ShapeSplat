@@ -3,6 +3,14 @@ profile: stress
 description: "Paper stress benchmark profile."
 config: configs/stress_benchmark.yaml
 manifest: examples/stress_dataset/manifest.csv
+benchmark_schema: v2
+benchmark_manifest: null
+use_frontend_cache: false
+frontend_cache_manifest: null
 out_name: stress
 max_images: 12
 create_if_missing: true
+frontend_cache:
+  use_cache: false
+  cache_manifest: null
+  cache_root: null

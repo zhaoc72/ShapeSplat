@@ -113,3 +113,15 @@ python scripts/run_quick_tests.py
 python scripts/validate_artifact.py --matrix configs/command_matrix.yaml --groups quick smoke --out outputs/artifact_validation
 ```
 
+## Final Paper Experiments
+
+```bash
+python scripts/check_final_paper_ready.py --profile configs/paper/final_debug.yaml --out outputs/check_final_ready
+python scripts/run_final_paper.py --profile configs/paper/final_debug.yaml --out outputs/final_paper_debug --dry-run
+python scripts/run_final_paper.py --profile configs/paper/final_debug.yaml --out outputs/final_paper_debug --generate-tables --generate-report
+python scripts/export_all_final_tables.py --root outputs/final_paper_debug --out outputs/final_paper_debug/tables
+python scripts/generate_final_report.py --root outputs/final_paper_debug --out outputs/final_paper_debug/report --title "ShapeSplat++ Final Paper Report"
+python scripts/run_experiment.py --preset final_paper_debug --out outputs/exp_final_paper_debug
+```
+
+Use these commands for the final orchestration smoke test. `final_debug` is intentionally small and can auto-create the example benchmark; replace it with a local final profile before making paper claims.
