@@ -1,5 +1,0 @@
-image_id,image_path,mask_path,split,category
-example_000,images/example_000.png,masks/example_000.npy,test,toy
-example_001,images/example_001.png,masks/example_001.npy,test,toy
-example_002,images/example_002.png,masks/example_002.npy,test,toy
-example_003,images/example_003.png,masks/example_003.npy,test,toy

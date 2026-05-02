@@ -1,7 +1,0 @@
-torch
-numpy
-pillow
-pyyaml
-matplotlib
-tqdm
-pytest
