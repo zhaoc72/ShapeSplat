@@ -1,0 +1,76 @@
+{
+  "image_id": "small_object_003",
+  "subset": "small_object",
+  "num_objects": 3,
+  "object_infos": [
+    {
+      "object_id": 0,
+      "category": "circle",
+      "color": [
+        226,
+        80,
+        80
+      ],
+      "bbox_xyxy": [
+        24,
+        48,
+        63,
+        87
+      ],
+      "visible_area": 1193,
+      "full_area_approx": 1193,
+      "is_truncated": false,
+      "scale": 0.95
+    },
+    {
+      "object_id": 1,
+      "category": "rectangle",
+      "color": [
+        75,
+        148,
+        230
+      ],
+      "bbox_xyxy": [
+        85,
+        37,
+        100,
+        52
+      ],
+      "visible_area": 225,
+      "full_area_approx": 225,
+      "is_truncated": false,
+      "scale": 0.35
+    },
+    {
+      "object_id": 2,
+      "category": "triangle",
+      "color": [
+        82,
+        178,
+        104
+      ],
+      "bbox_xyxy": [
+        63,
+        75,
+        94,
+        106
+      ],
+      "visible_area": 481,
+      "full_area_approx": 481,
+      "is_truncated": false,
+      "scale": 0.75
+    }
+  ],
+  "occlusion_pairs": [],
+  "depth_order_pairs": [],
+  "same_category_pairs": [],
+  "truncation_flags": {
+    "0": false,
+    "1": false,
+    "2": false
+  },
+  "scale_ratios": {
+    "max_over_min": 2.7142857142857144
+  },
+  "generation_seed": 7126
+}

@@ -1,0 +1,19 @@
+# External baseline adapter 配置。
+# dummy_external 用于测试 adapter runner；example_command_template 只是模板，默认不会运行。
+external_baselines:
+  - name: dummy_external
+    adapter: dummy_external
+    enabled: true
+    command: null
+
+  - name: example_command_template
+    adapter: command_template
+    enabled: false
+    command: "python external_methods/example_method/run.py --image {image} --masks {masks} --out {output_dir}"
+
+runner:
+  dry_run: true
+  strict_validation: false
+  timeout_sec: 3600
+  save_logs: true
+

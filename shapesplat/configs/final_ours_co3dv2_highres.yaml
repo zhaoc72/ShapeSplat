@@ -1,0 +1,65 @@
+# CO3Dv2 high-res Ours debug 配置。
+# 中文注释：该配置用于诊断高分辨率工作流；SoftGaussianRenderer 结果不能冒充最终真实 3DGS 质量。
+seed: 7
+
+image:
+  resize_mode: keep_aspect
+  long_side: 640
+  size: 640
+
+frontend:
+  mask_source: file
+  mask_resize_mode: nearest
+  image_resize_mode: keep_aspect
+  image_resize_long_side: 640
+  keep_aspect_ratio: true
+  dino_backend: real
+  dino_repo_path: D:\projects\dinov3
+  dino_model_name: dinov3_vits16
+  dino_checkpoint: D:\projects\dinov3\checkpoint\dinov3_vits16_pretrain_lvd1689m.pth
+  dino_device: cuda
+  dino_input_size: 448
+  dino_patch_size: 16
+  dino_l2_normalize: true
+  depth_backend: auto
+  depth_device: cuda
+
+frontend_cache:
+  use_cache: true
+  save_cache: false
+  cache_root: outputs/cache_co3dv2_real_frontend_vits16_highres
+  cache_manifest: outputs/cache_co3dv2_real_frontend_vits16_highres/cache_manifest.csv
+  fallback_to_compute: true
+  validate_on_load: true
+
+renderer:
+  backend: soft
+  fallback_to_soft: true
+  image_size: [640, 480]
+
+runtime:
+  device: cuda
+  cuda_device: 0
+  prefer_gpu: true
+  allow_cpu_fallback: false
+  require_cuda_for_experiments: true
+  mixed_precision: false
+  log_gpu_memory: true
+
+debug:
+  allow_debug_iteration_cap: false
+
+training:
+  visible_warmup_iters: 50
+  hidden_prior_iters: 50
+  joint_ownership_iters: 100
+  edit_finetune_iters: 20
+  log_every: 10
+
+ours:
+  variant: full
+  save_ownership_npy: true
+  save_diagnostics: true
+  save_checkpoint: false
+  save_visuals: true
+  save_pred_pointcloud: true

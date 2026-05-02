@@ -1,0 +1,18 @@
+# 主 same-mask comparison 配置：Ours + dummy/independent baselines。
+profile: main_comparison
+description: "Same-mask Ours vs baselines comparison."
+manifest: examples/example_dataset/manifest.csv
+benchmark_schema: v2
+benchmark_manifest: null
+use_frontend_cache: false
+frontend_cache_manifest: null
+config: configs/benchmark_baseline.yaml
+out_name: main_comparison
+max_images: 3
+run_independent_gaussian: true
+run_dummy_baselines: true
+generate_report: true
+frontend_cache:
+  use_cache: false
+  cache_manifest: null
+  cache_root: null

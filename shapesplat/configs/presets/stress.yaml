@@ -1,0 +1,14 @@
+name: stress
+description: "Run the synthetic occlusion/edit stress benchmark."
+default_out: outputs/experiments/stress
+steps:
+  - name: create_stress_dataset
+    enabled: true
+    command: [python, scripts/create_stress_dataset.py, --out, examples/stress_dataset, --num-per-subset, "4", --size, "128"]
+  - name: run_stress_benchmark
+    enabled: true
+    command: [python, scripts/run_stress_benchmark.py, --config, configs/stress_benchmark.yaml, --manifest, examples/stress_dataset/manifest.csv, --out, "{out}", --max-images, "12", --no-run-metadata]
+  - name: generate_report
+    enabled: true
+    command: [python, scripts/generate_report.py, --root, "{out}", --out, "{out}/report", --title, "ShapeSplat++ Stress Benchmark Report", --no-run-metadata]
+

@@ -1,0 +1,91 @@
+# CO3Dv2 real frontend main config.
+# ViT-L/16 是主实验推荐配置；建议先用 debug ViT-S/16 跑通后再切换到此配置。
+seed: 7
+device: cuda
+
+runtime:
+  device: cuda
+  cuda_device: 0
+  prefer_gpu: true
+  allow_cpu_fallback: false
+  require_cuda_for_experiments: true
+  mixed_precision: false
+  amp_dtype: float16
+  benchmark_cudnn: true
+  deterministic: false
+  empty_cache_between_images: true
+  max_gpu_memory_fraction: null
+  warn_if_cuda_unavailable: true
+  fail_if_cuda_requested_but_unavailable: true
+  log_gpu_memory: true
+
+image:
+  size: 128
+  input_path: null
+
+frontend:
+  mask_source: file
+  sam_backend: auto
+  sam3_repo_path: D:\projects\sam3
+  sam3_checkpoint: D:\projects\sam3\checkpoint\sam3.pt
+  sam3_model_type: sam3
+  sam3_device: cuda
+  sam3_prompt_mode: text
+  sam3_text_prompts:
+    - object
+  sam3_score_threshold: 0.5
+  sam3_max_masks: 8
+
+  dino_backend: real
+  dino_repo_path: D:\projects\dinov3
+  dino_model_name: dinov3_vitl16
+  dino_checkpoint: D:\projects\dinov3\checkpoint\dinov3_vitl16_pretrain_lvd1689m.pth
+  dino_device: cuda
+  dino_feature_layer: last
+  dino_input_size: null
+  dino_patch_size: 16
+  dino_l2_normalize: true
+  dino_pooling:
+    use_eroded_mask: true
+    erosion_kernel: 5
+    use_distance_weight: true
+    fallback_to_bbox_crop_for_small_masks: true
+    small_mask_area_ratio: 0.005
+
+  depth_backend: auto
+  depth_model_name: null
+  depth_checkpoint: null
+  depth_device: cuda
+  depth_normalize: true
+  depth_normalize_on_foreground: true
+
+frontend_cache:
+  use_cache: false
+  save_cache: true
+  cache_root: outputs/cache_co3dv2_real_frontend_vitl16
+  cache_manifest: outputs/cache_co3dv2_real_frontend_vitl16/cache_manifest.csv
+  fallback_to_compute: true
+  save_dino_features: false
+  validate_on_load: true
+
+shape_bank:
+  backend: auto
+  root: null
+  fallback_to_toy: true
+
+renderer:
+  backend: auto
+  fallback_to_soft: true
+
+training:
+  visible_warmup_iters: 3
+  hidden_prior_iters: 3
+  joint_ownership_iters: 3
+  edit_finetune_iters: 2
+  log_every: 1
+
+ours:
+  variant: full
+  save_diagnostics: true
+  save_visuals: true
+  save_pred_pointcloud: true

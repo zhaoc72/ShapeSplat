@@ -1,0 +1,67 @@
+# CO3Dv2 high-res frontend cache 配置。
+# 中文注释：主实验仍使用 CO3Dv2 file masks；DINOv3 ViT-S/16 只提取 frozen dense descriptors。
+seed: 7
+
+image:
+  resize_mode: keep_aspect
+  long_side: 640
+  size: 640
+
+frontend:
+  mask_source: file
+  mask_resize_mode: nearest
+  image_resize_mode: keep_aspect
+  image_resize_long_side: 640
+  keep_aspect_ratio: true
+
+  sam_backend: auto
+  sam3_repo_path: D:\projects\sam3
+  sam3_checkpoint: D:\projects\sam3\checkpoint\sam3.pt
+  sam3_model_type: sam3
+  sam3_device: cuda
+  sam3_prompt_mode: text
+  sam3_text_prompts:
+    - object
+  sam3_score_threshold: 0.5
+  sam3_max_masks: 8
+
+  dino_backend: real
+  dino_repo_path: D:\projects\dinov3
+  dino_model_name: dinov3_vits16
+  dino_checkpoint: D:\projects\dinov3\checkpoint\dinov3_vits16_pretrain_lvd1689m.pth
+  dino_device: cuda
+  dino_feature_layer: last
+  dino_input_size: 448
+  dino_patch_size: 16
+  dino_l2_normalize: true
+  dino_pooling:
+    use_eroded_mask: true
+    erosion_kernel: 5
+    use_distance_weight: true
+    fallback_to_bbox_crop_for_small_masks: true
+    small_mask_area_ratio: 0.005
+
+  depth_backend: auto
+  depth_model_name: null
+  depth_checkpoint: null
+  depth_device: cuda
+  depth_normalize: true
+  depth_normalize_on_foreground: true
+
+frontend_cache:
+  use_cache: false
+  save_cache: true
+  cache_root: outputs/cache_co3dv2_real_frontend_vits16_highres
+  cache_manifest: outputs/cache_co3dv2_real_frontend_vits16_highres/cache_manifest.csv
+  fallback_to_compute: true
+  save_dino_features: false
+  validate_on_load: true
+
+runtime:
+  device: cuda
+  cuda_device: 0
+  prefer_gpu: true
+  allow_cpu_fallback: false
+  require_cuda_for_experiments: true
+  mixed_precision: false
+  log_gpu_memory: true

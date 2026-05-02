@@ -1,0 +1,6 @@
+# 正式 comparison 的 method output 根目录。缺失路径只会 warning，不会让评估失败。
+method_outputs:
+  ours_full: outputs/ours_benchmark
+  independent_gaussian: outputs/independent_gaussian_dataset
+  identity_mask: outputs/baseline_dataset
+  scene_union: outputs/baseline_dataset

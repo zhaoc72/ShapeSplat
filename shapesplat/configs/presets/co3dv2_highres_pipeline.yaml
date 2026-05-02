@@ -1,0 +1,74 @@
+name: co3dv2_highres_pipeline
+description: "Cache CO3Dv2 high-res frontend, run Ours diagnostics, inspect resolution, and generate report."
+default_out: outputs/experiments/co3dv2_highres_pipeline
+steps:
+  - name: check_highres_ready
+    enabled: true
+    command:
+      - python
+      - scripts/check_co3dv2_highres_ready.py
+      - --config
+      - configs/final_ours_co3dv2_highres.yaml
+      - --manifest
+      - data/co3dv2_single_benchmark/manifest.csv
+      - --cache-manifest
+      - outputs/cache_co3dv2_real_frontend_vits16_highres/cache_manifest.csv
+      - --out
+      - "{out}/readiness"
+
+  - name: cache_highres_frontend
+    enabled: true
+    command:
+      - python
+      - scripts/cache_co3dv2_highres_frontend.py
+      - --config
+      - configs/co3dv2_real_frontend_highres.yaml
+      - --manifest
+      - data/co3dv2_single_benchmark/manifest.csv
+      - --out-cache
+      - "{out}/cache_highres"
+      - --max-images
+      - "5"
+      - --write-manifest
+      - "{out}/cache_highres/cache_manifest.csv"
+      - --validate
+      - --require-cuda
+      - --check-deps-first
+
+  - name: run_highres_ours
+    enabled: true
+    command:
+      - python
+      - scripts/run_co3dv2_highres_ours.py
+      - --config
+      - configs/final_ours_co3dv2_highres.yaml
+      - --manifest
+      - data/co3dv2_single_benchmark/manifest.csv
+      - --out
+      - "{out}/ours"
+      - --max-images
+      - "5"
+      - --frontend-cache-manifest
+      - "{out}/cache_highres/cache_manifest.csv"
+
+  - name: inspect_resolution
+    enabled: true
+    command:
+      - python
+      - scripts/inspect_output_resolution.py
+      - --out
+      - "{out}/ours"
+      - --max-items
+      - "5"
+
+  - name: generate_report
+    enabled: true
+    command:
+      - python
+      - scripts/generate_co3dv2_highres_report.py
+      - --root
+      - "{out}/ours"
+      - --out
+      - "{out}/report"
+
+# 中文注释：该 preset 是 CO3Dv2 high-res diagnostic 链路，不代表 paper-final 真实 3DGS renderer 结果。

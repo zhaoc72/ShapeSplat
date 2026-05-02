@@ -1,0 +1,22 @@
+name: dataset
+description: "Create example dataset and run the batch dataset runner."
+default_out: outputs/experiments/dataset
+steps:
+  - name: create_example_dataset
+    enabled: true
+    command: [python, scripts/create_example_dataset.py, --out, examples/example_dataset, --num-images, "4", --size, "128"]
+  - name: run_dataset
+    enabled: true
+    command:
+      - python
+      - scripts/run_dataset.py
+      - --config
+      - configs/dataset_minimal.yaml
+      - --manifest
+      - examples/example_dataset/manifest.csv
+      - --out
+      - "{out}"
+      - --max-images
+      - "3"
+      - --no-run-metadata
+

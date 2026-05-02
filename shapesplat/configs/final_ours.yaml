@@ -1,0 +1,92 @@
+# ShapeSplat++ Ours 主方法配置模板。
+# 真实投稿实验应填写 frontend_cache.cache_manifest、shape_bank.root 和真实 renderer 设置。
+# 如果仍 fallback 到 stub / toy / soft，本配置只能作为 debug/smoke 结果。
+seed: 7
+device: auto
+
+# 中文注释：投稿前可通过 --device cuda --require-cuda 强制 GPU；默认 auto 保持 debug 兼容。
+runtime:
+  device: auto
+  cuda_device: 0
+  prefer_gpu: true
+  allow_cpu_fallback: false
+  require_cuda_for_experiments: false
+  mixed_precision: false
+  amp_dtype: float16
+  benchmark_cudnn: true
+  deterministic: false
+  empty_cache_between_images: true
+  max_gpu_memory_fraction: null
+  warn_if_cuda_unavailable: true
+  fail_if_cuda_requested_but_unavailable: true
+  log_gpu_memory: true
+
+image:
+  size: 128
+  input_path: null
+
+frontend:
+  mask_source: file
+  mask_path: null
+  sam_backend: auto
+  dino_backend: auto
+  depth_backend: auto
+
+frontend_cache:
+  use_cache: true
+  cache_manifest: null
+  cache_root: null
+  fallback_to_compute: true
+  validate_on_load: true
+
+shape_bank:
+  backend: auto
+  root: null
+  fallback_to_toy: true
+  num_points: 512
+  normalize_points: true
+  random_descriptor_if_missing: true
+
+renderer:
+  backend: auto
+  fallback_to_soft: true
+  real_3dgs:
+    library: auto
+    object_contribution_mode: object_wise_alpha
+    render_objects_individually: true
+
+training:
+  visible_warmup_iters: 500
+  hidden_prior_iters: 1000
+  joint_ownership_iters: 1500
+  edit_finetune_iters: 500
+  log_every: 50
+
+ablation:
+  use_visible_hidden_split: true
+  use_hidden_branch: true
+  use_hidden_prior: true
+  use_confidence_weighting: true
+  use_dino_retrieval: true
+  use_scene_loss: true
+  use_ownership_loss: true
+  use_depth_loss: true
+  use_bg_loss: true
+  use_bridge_loss: true
+  use_edit_consistency: true
+  use_layout_loss: true
+
+ours:
+  variant: full
+  max_objects: null
+  save_ownership_npy: true
+  save_diagnostics: true
+  save_checkpoint: false
+  save_visuals: true
+  save_pred_pointcloud: true
+  auto_debug_iteration_cap: true
+  debug_iteration_cap:
+    visible_warmup_iters: 3
+    hidden_prior_iters: 3
+    joint_ownership_iters: 3
+    edit_finetune_iters: 2

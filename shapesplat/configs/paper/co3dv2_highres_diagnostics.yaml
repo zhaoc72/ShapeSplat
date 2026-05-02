@@ -1,0 +1,16 @@
+profile: co3dv2_highres_diagnostics
+description: "Run CO3Dv2 high-resolution real-image diagnostics with fixed file masks."
+
+benchmark_manifest: data/co3dv2_single_benchmark/manifest.csv
+config: configs/final_ours_co3dv2_highres.yaml
+frontend_cache_manifest: outputs/cache_co3dv2_real_frontend_vits16_highres/cache_manifest.csv
+out_name: co3dv2_highres_diagnostics
+max_images: 5
+use_frontend_cache: true
+run_ours_benchmark: true
+generate_report: true
+real_image_diagnostics: true
+report_geometry: false
+
+# 中文注释：CO3Dv2 single 是单 foreground real-image diagnostic，不是多物体主 benchmark；
+# SoftRenderer/ToyShapeBank fallback 只能用于诊断，不能作为论文最终质量声明。

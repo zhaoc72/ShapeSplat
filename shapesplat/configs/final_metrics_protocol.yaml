@@ -1,0 +1,19 @@
+# final metrics protocol。Geometry 仅在 pred/GT pointcloud 同时存在时计算。
+geometry:
+  enabled: true
+  pred_pointcloud_name: pred_pointcloud.npy
+  gt_field: gt_pointcloud_path
+  alignment: similarity_scale
+  threshold: 0.01
+  num_sample_points: 4096
+
+ownership:
+  enabled: true
+
+editing:
+  enabled: true
+  use_collateral_l1: true
+  lpips_enabled: false
+
+real_image_diagnostics:
+  report_geometry: false

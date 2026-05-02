@@ -1,0 +1,11 @@
+# Final main profile：读取已有 Ours/baseline outputs 做统一主表评估。
+profile: final_main
+benchmark_manifest: data/example_benchmark_v2/manifest.csv
+ours_outputs: outputs/ours_benchmark
+method_catalog: configs/method_catalog.yaml
+method_outputs: configs/final_method_outputs.yaml
+config: configs/final_ours.yaml
+out_name: final_main
+max_images: 3
+generate_tables: true
+generate_report: true

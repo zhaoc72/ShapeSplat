@@ -1,0 +1,54 @@
+name: co3dv2_real_frontend_cache
+description: "Cache CO3Dv2 descriptors using DINOv3 ViT-S/16 and CO3D file masks."
+default_out: outputs/experiments/co3dv2_real_frontend_cache
+steps:
+  - name: validate_co3dv2_benchmark
+    enabled: true
+    command:
+      - python
+      - scripts/validate_benchmark_v2.py
+      - --manifest
+      - data/co3dv2_single_benchmark/manifest.csv
+      - --config
+      - configs/final_benchmark.yaml
+      - --out
+      - "{out}/validate"
+
+  - name: check_dinov3_dependencies
+    enabled: true
+    command:
+      - python
+      - scripts/check_dinov3_dependencies.py
+
+  - name: check_dinov3_vits16
+    enabled: true
+    command:
+      - python
+      - scripts/check_dinov3_weights.py
+      - --config
+      - configs/co3dv2_real_frontend_debug.yaml
+      - --input
+      - examples/test_image.png
+      - --out
+      - "{out}/check_dinov3_vits16"
+      - --device
+      - cuda
+
+  - name: cache_real_frontend_vits16
+    enabled: true
+    command:
+      - python
+      - scripts/cache_co3dv2_real_frontend.py
+      - --config
+      - configs/co3dv2_real_frontend_debug.yaml
+      - --manifest
+      - data/co3dv2_single_benchmark/manifest.csv
+      - --out-cache
+      - "{out}/cache_vits16"
+      - --max-images
+      - "5"
+      - --write-manifest
+      - "{out}/cache_vits16/cache_manifest.csv"
+      - --validate
+      - --require-cuda
+      - --check-deps-first

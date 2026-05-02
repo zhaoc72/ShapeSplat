@@ -1,0 +1,25 @@
+name: comparison
+description: "Run same-mask comparison on the example dataset."
+default_out: outputs/experiments/comparison
+steps:
+  - name: create_example_dataset
+    enabled: true
+    command: [python, scripts/create_example_dataset.py, --out, examples/example_dataset, --num-images, "4", --size, "128"]
+  - name: run_comparison
+    enabled: true
+    command:
+      - python
+      - scripts/run_comparison.py
+      - --config
+      - configs/comparison_minimal.yaml
+      - --manifest
+      - examples/example_dataset/manifest.csv
+      - --out
+      - "{out}"
+      - --max-images
+      - "3"
+      - --no-run-metadata
+  - name: generate_report
+    enabled: true
+    command: [python, scripts/generate_report.py, --root, "{out}", --out, "{out}/report", --title, "ShapeSplat++ Comparison Report", --no-run-metadata]
+

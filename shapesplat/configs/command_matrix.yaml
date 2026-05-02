@@ -1,0 +1,169 @@
+# artifact validation 的核心命令矩阵：记录交付前应该能跑通的关键命令。
+commands:
+  - name: import_check
+    group: quick
+    required: true
+    command:
+      - python
+      - -c
+      - "import shapesplat; print('import ok')"
+    expected_outputs: []
+
+  - name: pytest_quick
+    group: quick
+    required: true
+    command:
+      - python
+      - -m
+      - pytest
+      - tests/test_smoke.py
+      - tests/test_evaluation.py
+      - tests/test_renderer_backend.py
+      - -q
+    expected_outputs: []
+
+  - name: create_example_image
+    group: smoke
+    required: true
+    command:
+      - python
+      - scripts/create_example_image.py
+      - --out
+      - examples/test_image.png
+      - --size
+      - "128"
+    expected_outputs:
+      - examples/test_image.png
+
+  - name: minimal
+    group: smoke
+    required: true
+    command:
+      - python
+      - scripts/run_minimal.py
+      - --config
+      - configs/minimal.yaml
+      - --out
+      - outputs/validation/minimal
+      - --eval
+      - --no-run-metadata
+    expected_outputs:
+      - outputs/validation/minimal/metrics.json
+      - outputs/validation/minimal/render_final.png
+
+  - name: create_example_dataset
+    group: smoke
+    required: true
+    command:
+      - python
+      - scripts/create_example_dataset.py
+      - --out
+      - examples/example_dataset
+      - --num-images
+      - "4"
+      - --size
+      - "128"
+    expected_outputs:
+      - examples/example_dataset/manifest.csv
+
+  - name: same_mask_single
+    group: smoke
+    required: true
+    command:
+      - python
+      - scripts/run_minimal.py
+      - --config
+      - configs/same_mask.yaml
+      - --input
+      - examples/example_dataset/images/example_000.png
+      - --mask
+      - examples/example_dataset/masks/example_000.npy
+      - --out
+      - outputs/validation/same_mask_single
+      - --eval
+      - --no-run-metadata
+    expected_outputs:
+      - outputs/validation/same_mask_single/metrics.json
+
+  - name: comparison_dry_run
+    group: paper
+    required: true
+    command:
+      - python
+      - scripts/run_paper_experiments.py
+      - --profile
+      - debug
+      - --out
+      - outputs/validation/paper_debug
+      - --dry-run
+      - --no-run-metadata
+    expected_outputs:
+      - outputs/validation/paper_debug/paper_plan.json
+
+  - name: stress_small
+    group: smoke
+    required: false
+    command:
+      - python
+      - scripts/create_stress_dataset.py
+      - --out
+      - examples/stress_dataset
+      - --num-per-subset
+      - "1"
+      - --size
+      - "128"
+    expected_outputs:
+      - examples/stress_dataset/manifest.csv
+
+  - name: run_stress_small
+    group: smoke
+    required: false
+    command:
+      - python
+      - scripts/run_stress_benchmark.py
+      - --config
+      - configs/stress_benchmark.yaml
+      - --manifest
+      - examples/stress_dataset/manifest.csv
+      - --out
+      - outputs/validation/stress_small
+      - --max-images
+      - "2"
+      - --no-run-metadata
+    expected_outputs:
+      - outputs/validation/stress_small/stress_subset_summary.json
+
+  - name: edit_demo
+    group: smoke
+    required: false
+    command:
+      - python
+      - scripts/run_edit_demo.py
+      - --config
+      - configs/editing.yaml
+      - --input
+      - examples/example_dataset/images/example_000.png
+      - --mask
+      - examples/example_dataset/masks/example_000.npy
+      - --out
+      - outputs/validation/edit_demo
+      - --object-id
+      - "0"
+      - --no-run-metadata
+    expected_outputs:
+      - outputs/validation/edit_demo/edit_summary.json
+
+  - name: paper_debug_dry_run
+    group: paper
+    required: true
+    command:
+      - python
+      - scripts/run_paper_experiments.py
+      - --profile
+      - debug
+      - --out
+      - outputs/validation/paper_debug
+      - --dry-run
+      - --no-run-metadata
+    expected_outputs:
+      - outputs/validation/paper_debug/paper_plan.json

@@ -1,0 +1,89 @@
+# Lightweight final debug profile. 这是 smoke test，不是投稿最终结果。
+profile: final_debug
+description: "Small final paper smoke test."
+final_paper: true
+
+runtime:
+  device: auto
+  cuda_device: 0
+  prefer_gpu: true
+  allow_cpu_fallback: false
+  require_cuda_for_experiments: false
+  mixed_precision: false
+
+benchmark:
+  manifest: data/example_benchmark_v2/manifest.csv
+  config: configs/final_benchmark.yaml
+  require_valid: true
+  create_if_missing: true
+  max_images: 2
+
+frontend_cache:
+  use_cache: false
+  cache_manifest: null
+  cache_root: null
+  validate_cache: false
+
+ours:
+  config: configs/final_ours.yaml
+  output_dir: ours
+  run_full: true
+  save_checkpoint: false
+  strict_ready: false
+
+variants:
+  enabled: true
+  config: configs/final_ours.yaml
+  variants: configs/ours_variants.yaml
+  output_dir: variants
+  variant_names: [full, visible_only]
+  max_images: 2
+
+baselines:
+  enabled: true
+  run_independent_gaussian: true
+  run_dummy_baselines: true
+  method_catalog: configs/method_catalog.yaml
+  output_dir: baselines
+
+comparison:
+  enabled: true
+  config: configs/final_ours.yaml
+  method_catalog: configs/method_catalog.yaml
+  output_dir: comparison
+
+stress:
+  enabled: true
+  config: configs/stress_benchmark.yaml
+  manifest: examples/stress_dataset/manifest.csv
+  create_if_missing: true
+  num_per_subset: 1
+  max_images: 4
+  output_dir: stress
+
+editing:
+  enabled: true
+  config: configs/editing.yaml
+  manifest: examples/example_dataset/manifest.csv
+  create_if_missing: true
+  max_images: 1
+  max_objects: 1
+  output_dir: editing
+
+tables:
+  enabled: true
+  output_dir: tables
+  columns: configs/paper/table_columns.yaml
+
+report:
+  enabled: true
+  output_dir: report
+  title: "ShapeSplat++ Final Paper Report"
+
+readiness:
+  strict: false
+  warn_if_stub_backend: true
+  warn_if_toy_shape_bank: true
+  warn_if_soft_renderer: true
+  warn_if_missing_external_baselines: true
+  warn_if_missing_geometry_gt: true

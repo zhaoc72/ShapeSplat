@@ -1,0 +1,34 @@
+# Comparison runner smoke-test 配置，不是正式论文实验配置。
+# 默认使用 same-mask file masks 和 soft renderer，训练步数较小，便于快速验证。
+seed: 7
+device: auto
+
+image:
+  size: 64
+  input_path: null
+
+frontend:
+  mask_source: file
+  mask_path: null
+  mask_dir: null
+  mask_format: auto
+  mask_instance_mode: auto
+  mask_resize_mode: nearest
+  mask_min_area_ratio: 0.002
+  mask_max_num_objects: null
+  mask_keep_ids: null
+  sam_backend: stub
+  dino_backend: stub
+  depth_backend: stub
+
+renderer:
+  backend: soft
+
+training:
+  visible_warmup_iters: 3
+  hidden_prior_iters: 3
+  joint_ownership_iters: 3
+  edit_finetune_iters: 2
+
+
+# stress benchmark smoke-test config: ?? file masks ? soft renderer????????????

@@ -1,0 +1,27 @@
+# 本地真实组件集成 smoke preset：先检测 capability，再运行 auto fallback 烟测。
+name: real_integration_smoke
+description: "Check local real backend capability and run integration smoke test."
+default_out: outputs/experiments/real_integration_smoke
+steps:
+  - name: check_backend_capabilities
+    enabled: true
+    command:
+      - python
+      - scripts/check_backend_capabilities.py
+      - --config
+      - configs/local_backend_template.yaml
+      - --out
+      - "{out}/capabilities"
+
+  - name: run_real_integration_smoke
+    enabled: true
+    command:
+      - python
+      - scripts/run_real_integration_smoke.py
+      - --config
+      - configs/local_backend_template.yaml
+      - --input
+      - examples/test_image.png
+      - --out
+      - "{out}/smoke"
+      - --save-cache
